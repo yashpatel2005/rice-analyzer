@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — Rice Analyzer{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">⚙️ Settings</h1>
+    <p class="page-subtitle">Configure preprocessing, segmentation, classification & grading parameters</p>
+
+    <div class="grid grid-2">
+        <!-- Preprocessing -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">🔧 Preprocessing</div></div>
+            <div class="form-group">
+                <label>Gaussian Blur Kernel (JSON array)</label>
+                <input type="text" class="form-control" id="set-blur-kernel" placeholder="[5, 5]">
+            </div>
+            <div class="form-group">
+                <label>CLAHE Clip Limit</label>
+                <input type="number" class="form-control" id="set-clahe-clip" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>Morphological Kernel Size</label>
+                <input type="number" class="form-control" id="set-morph-kernel">
+            </div>
+            <div class="form-group">
+                <label>Morphological Iterations</label>
+                <input type="number" class="form-control" id="set-morph-iter">
+            </div>
+            <div class="form-group">
+                <label>Threshold Method</label>
+                <select class="form-control" id="set-threshold-method">
+                    <option value="otsu">Otsu</option>
+                    <option value="adaptive">Adaptive</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Segmentation -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">✂️ Segmentation</div></div>
+            <div class="form-group">
+                <label>Min Grain Area (px)</label>
+                <input type="number" class="form-control" id="set-min-area">
+            </div>
+            <div class="form-group">
+                <label>Max Grain Area (px)</label>
+                <input type="number" class="form-control" id="set-max-area">
+            </div>
+            <div class="form-group">
+                <label>Watershed Distance Threshold</label>
+                <input type="number" class="form-control" id="set-watershed-thresh" step="0.05">
+            </div>
+            <div class="form-group">
+                <label>Capture Width</label>
+                <input type="number" class="form-control" id="set-capture-width">
+            </div>
+            <div class="form-group">
+                <label>Capture Height</label>
+                <input type="number" class="form-control" id="set-capture-height">
+            </div>
+        </div>
+
+        <!-- Classification -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">🏷️ Classification Thresholds</div></div>
+            <div class="form-group">
+                <label>Long Grain Min Length (mm)</label>
+                <input type="number" class="form-control" id="cls-long-min" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>Medium Grain Min Length (mm)</label>
+                <input type="number" class="form-control" id="cls-medium-min" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>Short Grain Max Length (mm)</label>
+                <input type="number" class="form-control" id="cls-short-max" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>Broken Max Length Ratio</label>
+                <input type="number" class="form-control" id="cls-broken-ratio" step="0.05">
+            </div>
+            <div class="form-group">
+                <label>Abnormal Solidity Min</label>
+                <input type="number" class="form-control" id="cls-abn-solidity" step="0.01">
+            </div>
+        </div>
+
+        <!-- Grading -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">🏆 Grading Rules</div></div>
+            <div id="grading-rules-content"></div>
+        </div>
+    </div>
+
+    <div class="text-center mt-3">
+        <button class="btn btn-primary btn-lg" onclick="saveSettings()">💾 Save Settings</button>
+        <button class="btn btn-secondary btn-lg" onclick="loadSettings()">🔄 Reload</button>
+    </div>
+    <div id="settings-status" class="mt-2"></div>
+</div>
+
+<script>
+async function loadSettings() {
+    const res = await fetch('/api/settings');
+    const data = await res.json();
+    if (!data.success) return;
+    const s = data.settings;
+
+    document.getElementById('set-blur-kernel').value = JSON.stringify(s.gaussian_blur_kernel);
+    document.getElementById('set-clahe-clip').value = s.clahe_clip_limit;
+    document.getElementById('set-morph-kernel').value = s.morph_kernel_size;
+    document.getElementById('set-morph-iter').value = s.morph_iterations;
+    document.getElementById('set-threshold-method').value = s.threshold_method;
+    document.getElementById('set-min-area').value = s.min_grain_area_px;
+    document.getElementById('set-max-area').value = s.max_grain_area_px;
+    document.getElementById('set-watershed-thresh').value = s.watershed_distance_threshold;
+    document.getElementById('set-capture-width').value = s.capture_width;
+    document.getElementById('set-capture-height').value = s.capture_height;
+
+    const ct = s.classification_thresholds;
+    document.getElementById('cls-long-min').value = ct.long_grain_min_length;
+    document.getElementById('cls-medium-min').value = ct.medium_grain_min_length;
+    document.getElementById('cls-short-max').value = ct.short_grain_max_length;
+    document.getElementById('cls-broken-ratio').value = ct.broken_max_length_ratio;
+    document.getElementById('cls-abn-solidity').value = ct.abnormal_solidity_min;
+
+    // Grading rules
+    const gr = s.grading_rules;
+    let html = '';
+    for (const [grade, rules] of Object.entries(gr)) {
+        html += `<div class="card" style="margin-bottom: 0.5rem;">
+            <div class="card-header" style="padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <div class="card-title">${grade.replace(/_/g, ' ').toUpperCase()}</div>
+            </div>`;
+        for (const [key, val] of Object.entries(rules)) {
+            html += `<div class="form-group">
+                <label>${key.replace(/_/g, ' ')}</label>
+                <input type="number" class="form-control" id="gr-${grade}-${key}" step="0.1" value="${val}">
+            </div>`;
+        }
+        html += '</div>';
+    }
+    document.getElementById('grading-rules-content').innerHTML = html;
+}
+
+async function saveSettings() {
+    const data = {
+        gaussian_blur_kernel: JSON.parse(document.getElementById('set-blur-kernel').value),
+        clahe_clip_limit: parseFloat(document.getElementById('set-clahe-clip').value),
+        morph_kernel_size: parseInt(document.getElementById('set-morph-kernel').value),
+        morph_iterations: parseInt(document.getElementById('set-morph-iter').value),
+        threshold_method: document.getElementById('set-threshold-method').value,
+        min_grain_area_px: parseInt(document.getElementById('set-min-area').value),
+        max_grain_area_px: parseInt(document.getElementById('set-max-area').value),
+        watershed_distance_threshold: parseFloat(document.getElementById('set-watershed-thresh').value),
+        capture_width: parseInt(document.getElementById('set-capture-width').value),
+        capture_height: parseInt(document.getElementById('set-capture-height').value),
+        classification_thresholds: {
+            long_grain_min_length: parseFloat(document.getElementById('cls-long-min').value),
+            medium_grain_min_length: parseFloat(document.getElementById('cls-medium-min').value),
+            short_grain_max_length: parseFloat(document.getElementById('cls-short-max').value),
+            broken_max_length_ratio: parseFloat(document.getElementById('cls-broken-ratio').value),
+            abnormal_solidity_min: parseFloat(document.getElementById('cls-abn-solidity').value),
+        },
+        grading_rules: {},
+    };
+
+    // Collect grading rules
+    document.querySelectorAll('[id^="gr-"]').forEach(input => {
+        const parts = input.id.substring(3).split('-');
+        const grade = parts[0];
+        const key = parts.slice(1).join('-');
+        if (!data.grading_rules[grade]) data.grading_rules[grade] = {};
+        data.grading_rules[grade][key] = parseFloat(input.value);
+    });
+
+    showSpinner('Saving settings...');
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            showToast('Settings saved successfully!', 'success');
+            document.getElementById('settings-status').innerHTML = `<div class="p-2" style="background:rgba(76,175,80,0.1);border-radius:8px;">✅ Updated: ${result.updated.join(', ')}</div>`;
+        } else {
+            showToast('Failed to save settings', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+    hideSpinner();
+}
+
+loadSettings();
+</script>
+{% endblock %}

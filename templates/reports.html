@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Reports — Rice Analyzer{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:1600px;">
+
+    <!-- Hero CTA — Power BI Dashboard -->
+    <div class="dashboard-cta-card mb-4">
+        <div style="padding: 1.75rem 2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+            <div>
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:0.4rem;">
+                    <i class="bi bi-bar-chart-line-fill" style="font-size:2rem; color:#f2c811; filter:drop-shadow(0 0 10px rgba(242,200,17,0.5));"></i>
+                    <h3 style="margin:0; font-weight:800; color:#fff; font-size:1.4rem; letter-spacing:-0.3px;">Power BI Interactive Dashboard</h3>
+                </div>
+                <p style="margin:0; color:var(--text-muted); font-size:0.92rem;">
+                    Explore KPI cards, live slicers, distribution charts, scatter plots, and grain-level details in one premium dashboard.
+                </p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a href="/dashboard" class="btn btn-powerbi btn-lg" id="openDashboardBtn">
+                    <i class="bi bi-box-arrow-up-right"></i> Open Dashboard
+                </a>
+                <a href="/api/export/powerbi" class="btn btn-outline-light">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest annotated image preview -->
+    <div id="latestPreviewCard" style="display:none;" class="mb-4">
+        <div class="card" style="padding:0; overflow:hidden;">
+            <div class="card-header" style="padding:1rem 1.5rem;">
+                <div class="card-title"><i class="bi bi-image"></i> Latest Analysis Preview</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-sm btn-powerbi" onclick="window.location.href='/dashboard'">
+                        <i class="bi bi-bar-chart-line-fill"></i> Open Full Dashboard
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="openImgModal(document.getElementById('latestAnnotatedImg').src)">
+                        <i class="bi bi-arrows-fullscreen"></i> Fullscreen
+                    </button>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0; min-height:220px;">
+                <!-- Annotated image — click to open dashboard -->
+                <div class="annotated-panel" onclick="window.location.href='/dashboard'" title="Click to open Power BI Dashboard" style="border-radius:0; border:none; border-right:1px solid var(--border);">
+                    <img id="latestAnnotatedImg" src="" alt="Annotated Rice Image">
+                    <div class="annotated-panel-overlay">
+                        <div style="text-align:center;">
+                            <i class="bi bi-bar-chart-line-fill" style="font-size:2rem; margin-bottom:8px; display:block; color:#f2c811;"></i>
+                            <span style="font-weight:700; font-size:0.95rem;">Open Dashboard</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Quick stats from latest -->
+                <div style="padding:1.5rem; display:grid; grid-template-columns:1fr 1fr; gap:1rem; align-content:start;">
+                    <div id="latestKpi1" class="metric-item" style="grid-column:span 2;"></div>
+                    <div id="latestKpi2" class="metric-item"></div>
+                    <div id="latestKpi3" class="metric-item"></div>
+                    <div id="latestKpi4" class="metric-item"></div>
+                    <div id="latestKpi5" class="metric-item"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Files -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="bi bi-folder2-open"></i> Report Files</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadReports()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div id="reports-content">
+            <div style="text-align:center; padding:2rem; color:var(--text-muted);">
+                <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 1rem;"></div>
+                Loading reports...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load latest analysis for the preview panel
+async function loadLatestPreview() {
+    try {
+        const res = await fetch('/api/reports/latest');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const card = document.getElementById('latestPreviewCard');
+        card.style.display = 'block';
+
+        // Set annotated image
+        const img = document.getElementById('latestAnnotatedImg');
+        if (data.annotated_preview) {
+            img.src = data.annotated_preview;
+        }
+
+        // Quick KPIs
+        const kpis = [
+            { label: 'Run ID', value: data.run_id, id: 'latestKpi1', span: true },
+            { label: 'Total Grains', value: data.num_grains, id: 'latestKpi2' },
+            { label: 'Broken %', value: data.quality?.broken_pct != null ? data.quality.broken_pct.toFixed(1) + '%' : '—', id: 'latestKpi3' },
+            { label: 'Uniformity', value: data.quality?.uniformity_index != null ? data.quality.uniformity_index.toFixed(1) + '%' : '—', id: 'latestKpi4' },
+            { label: 'Grade', value: data.grading?.grade || '—', id: 'latestKpi5' },
+        ];
+
+        kpis.forEach(k => {
+            const el = document.getElementById(k.id);
+            if (el) {
+                el.innerHTML = `<div class="metric-label">${k.label}</div><div class="metric-value">${k.value}</div>`;
+            }
+        });
+
+    } catch (e) {
+        console.warn('No latest analysis:', e);
+    }
+}
+
+async function loadReports() {
+    const div = document.getElementById('reports-content');
+    div.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">
+        <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 1rem;"></div>Loading...</div>`;
+
+    try {
+        const res = await fetch('/api/reports');
+        const data = await res.json();
+
+        if (!data.success) {
+            div.innerHTML = '<p class="text-danger" style="padding:1rem;">Failed to load reports</p>';
+            return;
+        }
+
+        const categories = {
+            images: { label: 'Annotated Images', icon: 'bi-image', path: 'images', isImage: true },
+            plots:  { label: 'Statistical Plots', icon: 'bi-graph-up', path: 'plots', isImage: true },
+            csv:    { label: 'CSV Files', icon: 'bi-filetype-csv', path: 'csv', isImage: false },
+            excel:  { label: 'Excel Files', icon: 'bi-file-earmark-spreadsheet', path: 'excel', isImage: false },
+            json:   { label: 'JSON Files', icon: 'bi-braces', path: 'json', isImage: false },
+        };
+
+        let html = '';
+
+        for (const [cat, info] of Object.entries(categories)) {
+            const files = data.reports[cat] || [];
+            if (!files.length) continue;
+
+            html += `<div style="margin-bottom:2rem;">
+                <h5 style="color:var(--text-light);font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:8px;padding:0 0.25rem;">
+                    <i class="bi ${info.icon}" style="color:var(--primary-light);"></i>
+                    ${info.label}
+                    <span class="badge badge-success" style="margin-left:4px;">${files.length}</span>
+                </h5>`;
+
+            if (info.isImage) {
+                // Card grid with hover preview
+                html += `<div class="report-image-grid">`;
+                for (const f of files) {
+                    const previewUrl = `/api/preview/${info.path}/${encodeURIComponent(f.name)}`;
+                    const downloadUrl = `/api/download/${info.path}/${encodeURIComponent(f.name)}`;
+                    const dateStr = new Date(f.modified).toLocaleDateString();
+                    html += `
+                    <div class="report-img-card"
+                         onmouseenter="preloadImg('${previewUrl}')"
+                         title="${f.name} — ${dateStr}">
+                        <img src="${previewUrl}"
+                             loading="lazy"
+                             alt="${f.name}"
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect width=%22200%22 height=%22150%22 fill=%22%230f2040%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%236b8cbe%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 font-size=%2212%22%3ENo Preview%3C/text%3E%3C/svg%3E'">
+                        <div class="report-img-overlay">
+                            <div class="report-img-name"><i class="bi bi-file-image"></i> ${f.name}</div>
+                            <div class="report-img-actions">
+                                <button class="report-img-btn report-img-btn-dashboard"
+                                        onclick="event.stopPropagation(); window.location.href='/dashboard';"
+                                        title="Open Power BI Dashboard">
+                                    <i class="bi bi-bar-chart-line-fill"></i> Dashboard
+                                </button>
+                                <a href="${downloadUrl}" class="report-img-btn report-img-btn-download"
+                                   onclick="event.stopPropagation();" title="Download">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                html += `</div>`;
+
+            } else {
+                // Table for data files
+                html += `<div class="table-container">
+                    <table>
+                        <thead><tr><th>Filename</th><th>Size</th><th>Modified</th><th>Actions</th></tr></thead>
+                        <tbody>`;
+                for (const f of files) {
+                    const sizeStr = f.size > 1024*1024
+                        ? (f.size/1024/1024).toFixed(1) + ' MB'
+                        : f.size > 1024 ? (f.size/1024).toFixed(1) + ' KB' : f.size + ' B';
+                    const dateStr = new Date(f.modified).toLocaleString();
+                    html += `<tr>
+                        <td style="font-family:monospace;font-size:0.82rem;">${f.name}</td>
+                        <td><span class="badge badge-secondary">${sizeStr}</span></td>
+                        <td style="color:var(--text-muted);font-size:0.82rem;">${dateStr}</td>
+                        <td>
+                            <a href="/api/download/${info.path}/${encodeURIComponent(f.name)}"
+                               class="btn btn-primary btn-sm">
+                                <i class="bi bi-download"></i> Download
+                            </a>
+                        </td>
+                    </tr>`;
+                }
+                html += `</tbody></table></div>`;
+            }
+
+            html += `</div>`;
+        }
+
+        if (!html) {
+            html = `<div style="text-align:center;padding:3rem;color:var(--text-muted);">
+                <i class="bi bi-folder2-open" style="font-size:3rem;display:block;margin-bottom:1rem;opacity:0.4;"></i>
+                No report files yet. Run an analysis to generate reports.
+            </div>`;
+        }
+
+        div.innerHTML = html;
+
+        // Add click-to-fullscreen on image cards
+        div.querySelectorAll('.report-img-card img').forEach(img => {
+            img.addEventListener('click', function(e) {
+                // Only open modal if not clicking on overlay buttons
+                if (e.target === img) openImgModal(img.src);
+            });
+        });
+
+    } catch (e) {
+        div.innerHTML = '<p class="text-danger" style="padding:1rem;">Error loading reports: ' + e.message + '</p>';
+    }
+}
+
+function preloadImg(url) {
+    const img = new Image();
+    img.src = url;
+}
+
+// Init
+loadLatestPreview();
+loadReports();
+</script>
+{% endblock %}

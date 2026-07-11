@@ -1,0 +1,753 @@
+{% extends "base.html" %}
+
+{% block title %}Power BI Dashboard — Rice Analyzer{% endblock %}
+{% block page_title %}Power BI Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+
+    <!-- Toolbar -->
+    <div class="dashboard-toolbar mb-3">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+            <div>
+                <h2 class="dashboard-title">
+                    <i class="bi bi-bar-chart-line-fill" style="color:#f2c811; filter:drop-shadow(0 0 8px rgba(242,200,17,0.5));"></i>
+                    Interactive Analysis Dashboard
+                </h2>
+                <p class="dashboard-subtitle" id="runSubtitle">Loading latest analysis...</p>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <span id="filterBadge" class="badge badge-info" style="display:none; font-size:0.82rem; padding:5px 12px;">
+                    <i class="bi bi-funnel-fill"></i> <span id="filterCount">0</span> grains shown
+                </span>
+                <button class="btn btn-powerbi" onclick="loadDashboardData()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <button class="btn btn-outline-light" onclick="exportPowerBI()">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
+                </button>
+                <a href="/reports" class="btn btn-outline-light">
+                    <i class="bi bi-folder"></i> Reports
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row g-3 mb-4" id="kpiCards" style="display:grid; grid-template-columns:repeat(6,1fr); gap:1rem;">
+        <!-- Filled by JS -->
+    </div>
+
+    <!-- Live Slicers -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="card-title"><i class="bi bi-funnel"></i> Live Slicers &amp; Filters</div>
+            <button class="btn btn-sm btn-secondary" onclick="resetFilters()">
+                <i class="bi bi-x-circle"></i> Reset
+            </button>
+        </div>
+        <div style="padding:1rem 0.5rem;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:2rem;">
+                <!-- Category -->
+                <div>
+                    <label class="form-label"><i class="bi bi-tag"></i> Category</label>
+                    <select class="form-select" id="categoryFilter" onchange="applyFilters()">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                <!-- Length slider -->
+                <div>
+                    <label class="form-label"><i class="bi bi-rulers"></i> Length range (mm)</label>
+                    <div class="range-display" id="lengthRangeDisplay">—</div>
+                    <div id="lengthSlider"></div>
+                </div>
+                <!-- Width slider -->
+                <div>
+                    <label class="form-label"><i class="bi bi-arrows"></i> Width range (mm)</label>
+                    <div class="range-display" id="widthRangeDisplay">—</div>
+                    <div id="widthSlider"></div>
+                </div>
+                <!-- Area slider -->
+                <div>
+                    <label class="form-label"><i class="bi bi-square"></i> Area range (mm²)</label>
+                    <div class="range-display" id="areaRangeDisplay">—</div>
+                    <div id="areaSlider"></div>
+                </div>
+                <!-- Aspect ratio slider -->
+                <div>
+                    <label class="form-label"><i class="bi bi-aspect-ratio"></i> Aspect Ratio</label>
+                    <div class="range-display" id="arRangeDisplay">—</div>
+                    <div id="arSlider"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotated Image + Category Distribution -->
+    <div style="display:grid; grid-template-columns:1fr 1.6fr; gap:1.5rem; margin-bottom:1.5rem;">
+        <!-- Annotated image panel -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-image"></i> Annotated Image</h5>
+                <button class="btn btn-sm btn-secondary" id="fsBtn" onclick="fsAnnotated()" style="display:none;">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
+            <div class="chart-body" style="padding:0.75rem; min-height:auto;">
+                <div id="annotatedContainer" style="display:none;">
+                    <div class="annotated-panel" onclick="fsAnnotated()" title="Click to fullscreen">
+                        <img id="annotatedImg" src="" alt="Annotated Analysis">
+                        <div class="annotated-panel-overlay">
+                            <i class="bi bi-arrows-fullscreen" style="font-size:2rem;"></i>
+                        </div>
+                    </div>
+                    <p style="text-align:center; margin-top:0.5rem; font-size:0.78rem; color:var(--text-muted);">
+                        <i class="bi bi-zoom-in"></i> Click to enlarge
+                    </p>
+                </div>
+                <div id="annotatedPlaceholder" style="display:flex; align-items:center; justify-content:center; min-height:220px; color:var(--text-muted); flex-direction:column; gap:0.5rem;">
+                    <i class="bi bi-image" style="font-size:3rem; opacity:0.3;"></i>
+                    <span style="font-size:0.88rem;">No image available</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Donut -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-pie-chart"></i> Category Distribution</h5>
+                <span id="totalGrainsLabel" class="badge badge-info" style="font-size:0.78rem;"></span>
+            </div>
+            <div class="chart-body" style="min-height:280px;">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top distribution charts -->
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.5rem; margin-bottom:1.5rem;">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-bar-chart"></i> Length Distribution</h5>
+            </div>
+            <div class="chart-body"><canvas id="lengthChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-bar-chart"></i> Width Distribution</h5>
+            </div>
+            <div class="chart-body"><canvas id="widthChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-bar-chart"></i> Area Distribution</h5>
+            </div>
+            <div class="chart-body"><canvas id="areaChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Scatter + Aspect Ratio -->
+    <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-diagram-3"></i> Length vs Width (by Category)</h5>
+                <span style="font-size:0.78rem; color:var(--text-muted);">Hover for grain details</span>
+            </div>
+            <div class="chart-body" style="min-height:320px;"><canvas id="scatterChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-bar-chart-steps"></i> Aspect Ratio Distribution</h5>
+            </div>
+            <div class="chart-body" style="min-height:320px;"><canvas id="arChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Quality + Grading -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-clipboard-data"></i> Quality Metrics</h5>
+            </div>
+            <div class="chart-body" style="min-height:auto;">
+                <div id="qualityMetrics" class="metrics-grid"></div>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-header">
+                <h5><i class="bi bi-award"></i> Grading Verdict</h5>
+            </div>
+            <div class="chart-body text-center" style="min-height:auto;">
+                <div id="gradeBadge" class="grade-badge-dashboard">—</div>
+                <div id="gradingExplanation" class="grading-explanation mt-3 text-start"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grain Data Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+        <div class="card-header" style="padding:0.85rem 1.2rem;">
+            <div class="card-title">
+                <i class="bi bi-table"></i> Grain Details
+                <span id="grainCount" class="badge badge-info" style="margin-left:4px;">0</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" class="form-control form-control-sm" id="tableSearch"
+                       placeholder="🔍 Search grains..." oninput="filterTable()"
+                       style="width:200px; font-size:0.85rem;">
+                <select class="form-select form-select-sm" id="tableSortBy" onchange="sortTable()"
+                        style="width:160px; font-size:0.85rem;">
+                    <option value="label">Sort: ID</option>
+                    <option value="length_mm">Sort: Length</option>
+                    <option value="width_mm">Sort: Width</option>
+                    <option value="area_mm2">Sort: Area</option>
+                    <option value="aspect_ratio">Sort: Aspect Ratio</option>
+                    <option value="circularity">Sort: Circularity</option>
+                </select>
+            </div>
+        </div>
+        <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+            <table id="grainTable" style="font-size:0.84rem;">
+                <thead style="position:sticky; top:0; z-index:1;">
+                    <tr>
+                        <th>ID</th>
+                        <th>Category</th>
+                        <th id="thLength">Length (mm)</th>
+                        <th id="thWidth">Width (mm)</th>
+                        <th id="thArea">Area (mm²)</th>
+                        <th>Aspect Ratio</th>
+                        <th>Circularity</th>
+                        <th>Solidity</th>
+                        <th>Eccentricity</th>
+                    </tr>
+                </thead>
+                <tbody id="grainTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let dashboardData = null;
+let filteredData = [];
+let charts = {};
+let sliders = {};
+let sortAsc = true;
+let currentSortKey = 'label';
+
+const categoryColors = {
+    'whole_grain':    '#00c853',
+    'broken_grain':   '#ff1744',
+    'long_grain':     '#40c4ff',
+    'medium_grain':   '#d500f9',
+    'short_grain':    '#ff9100',
+    'oversized_grain':'#00e5ff',
+    'undersized_grain':'#f50057',
+    'abnormal_grain': '#607d8b',
+};
+
+const gradeClassMap = {
+    'Premium': 'grade-Premium',
+    'Grade A': 'grade-GradeA',
+    'Grade B': 'grade-GradeB',
+    'Grade C': 'grade-GradeC',
+    'Reject':  'grade-Reject',
+};
+
+const chartDefaults = {
+    animation: { duration: 900, easing: 'easeOutQuart' },
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: { labels: { color: '#c8d8f0', font: { family: 'Inter', size: 11, weight: '600' }, boxWidth: 12, padding: 14 } },
+        tooltip: {
+            backgroundColor: 'rgba(9,18,40,0.95)',
+            titleColor: '#fff',
+            bodyColor: '#c8d8f0',
+            borderColor: 'rgba(0,200,83,0.3)',
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 8,
+        }
+    }
+};
+
+const axisDefaults = (xLabel = '', yLabel = '') => ({
+    x: {
+        title: { display: !!xLabel, text: xLabel, color: '#6b8cbe', font: { size: 11 } },
+        ticks: { color: '#6b8cbe', font: { size: 10 } },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+    },
+    y: {
+        title: { display: !!yLabel, text: yLabel, color: '#6b8cbe', font: { size: 11 } },
+        ticks: { color: '#6b8cbe', font: { size: 10 } },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+    }
+});
+
+// ─── Load Dashboard Data ──────────────────────────────────────────────────────
+async function loadDashboardData() {
+    showSpinner('Loading dashboard data...');
+    try {
+        const res = await fetch('/api/dashboard/data');
+        const data = await res.json();
+
+        if (!data.success) {
+            hideSpinner();
+            showToast(data.error || 'No analysis data available. Run an analysis first.', 'warning');
+            return;
+        }
+
+        dashboardData = data;
+        filteredData = [...data.grain_data];
+
+        document.getElementById('runSubtitle').textContent =
+            `Run: ${data.run_id} • ${data.grain_data.length} grains analyzed`;
+
+        // Annotated image
+        if (data.annotated_preview) {
+            document.getElementById('annotatedImg').src = data.annotated_preview;
+            document.getElementById('annotatedContainer').style.display = 'block';
+            document.getElementById('annotatedPlaceholder').style.display = 'none';
+            document.getElementById('fsBtn').style.display = 'inline-flex';
+        }
+
+        renderKPICards(data.kpis);
+        setupSlicers(data);
+        renderCharts(data);
+        renderQuality(data.quality);
+        renderGrading(data.grading);
+        
+        // Update table headers with correct units
+        const unit = data.unit_suffix || 'mm';
+        const areaUnit = unit === 'mm' ? 'mm²' : 'px²';
+        document.getElementById('thLength').textContent = `Length (${unit})`;
+        document.getElementById('thWidth').textContent = `Width (${unit})`;
+        document.getElementById('thArea').textContent = `Area (${areaUnit})`;
+
+        renderTable(filteredData);
+        updateFilterBadge();
+
+        hideSpinner();
+        showToast('Dashboard loaded', 'success');
+
+    } catch (err) {
+        hideSpinner();
+        console.error(err);
+        showToast('Failed to load dashboard: ' + err.message, 'danger');
+    }
+}
+
+// ─── KPI Cards ────────────────────────────────────────────────────────────────
+function renderKPICards(kpis) {
+    const fmt = (v, d = 2) => v !== null && v !== undefined ? Number(v).toFixed(d) : '—';
+    const gradeCardClass = kpis.grade === 'Reject' ? 'danger' : kpis.grade === 'Premium' ? 'success' : '';
+
+    const unit = dashboardData.unit_suffix || 'mm';
+    const areaUnit = unit === 'mm' ? 'mm²' : 'px²';
+
+    const cards = [
+        { icon: 'bi-grid-3x3-gap', value: kpis.total_grains, label: 'Total Grains', cls: '', raw: kpis.total_grains, dec: 0 },
+        { icon: 'bi-exclamation-triangle', value: fmt(kpis.broken_pct, 1) + '%', label: 'Broken', cls: kpis.broken_pct > 10 ? 'danger' : 'success', raw: kpis.broken_pct, dec: 1 },
+        { icon: 'bi-rulers', value: fmt(kpis.mean_length) + ` ${unit}`, label: 'Avg Length', cls: '', raw: null },
+        { icon: 'bi-arrows', value: fmt(kpis.mean_width) + ` ${unit}`, label: 'Avg Width', cls: '', raw: null },
+        { icon: 'bi-activity', value: fmt(kpis.uniformity_index, 1) + '%', label: 'Uniformity', cls: kpis.uniformity_index < 70 ? 'danger' : 'success', raw: null },
+        { icon: 'bi-award', value: kpis.grade || '—', label: 'Final Grade', cls: gradeCardClass, raw: null, bigText: true },
+    ];
+
+    document.getElementById('kpiCards').innerHTML = cards.map(c => `
+        <div class="kpi-card ${c.cls}">
+            <div class="kpi-icon"><i class="bi ${c.icon}"></i></div>
+            <div class="kpi-value" ${c.bigText ? 'style="font-size:1.3rem;"' : ''}>${c.value}</div>
+            <div class="kpi-label">${c.label}</div>
+        </div>
+    `).join('');
+
+    // Animate numeric values
+    cards.forEach((c, i) => {
+        if (c.raw !== null && c.raw !== undefined) {
+            const el = document.querySelectorAll('#kpiCards .kpi-value')[i];
+            if (el) {
+                const suffix = c.label === 'Broken' ? '%' : '';
+                animateCounter(el, c.raw, 800, c.dec);
+                if (suffix) setTimeout(() => { el.textContent += suffix; }, 810);
+            }
+        }
+    });
+}
+
+// ─── Slicers (noUiSlider) ─────────────────────────────────────────────────────
+function setupSlicers(data) {
+    const grains = data.grain_data;
+
+    const getMinMax = key => {
+        const vals = grains.map(g => g[key]).filter(v => v != null && isFinite(v));
+        if (!vals.length) return [0, 1];
+        return [Math.min(...vals), Math.max(...vals)];
+    };
+
+    // Populate category filter
+    const catFilter = document.getElementById('categoryFilter');
+    catFilter.innerHTML = '<option value="all">All Categories</option>';
+    Object.keys(data.category_distribution).forEach(cat => {
+        catFilter.innerHTML += `<option value="${cat}">${cat.replace(/_/g, ' ')}</option>`;
+    });
+
+    // Create dual sliders
+    const [lMin, lMax] = getMinMax('length_mm');
+    const [wMin, wMax] = getMinMax('width_mm');
+    const [aMin, aMax] = getMinMax('area_mm2');
+    const [arMin, arMax] = getMinMax('aspect_ratio');
+
+    const makeSlider = (id, min, max, displayId, unit = '') => {
+        const container = document.getElementById(id);
+        if (!container) return;
+        if (container.noUiSlider) container.noUiSlider.destroy();
+        if (min === max) { max = min + 0.001; }
+
+        const step = Math.max((max - min) / 200, 0.0001);
+        noUiSlider.create(container, {
+            start: [min, max],
+            connect: true,
+            step,
+            range: { min, max },
+            tooltips: [
+                { to: v => Number(v).toFixed(3) + unit },
+                { to: v => Number(v).toFixed(3) + unit },
+            ],
+        });
+
+        const dispEl = document.getElementById(displayId);
+        container.noUiSlider.on('update', (values) => {
+            const lo = parseFloat(values[0]), hi = parseFloat(values[1]);
+            if (dispEl) dispEl.textContent = `${lo.toFixed(2)}${unit} — ${hi.toFixed(2)}${unit}`;
+        });
+
+        container.noUiSlider.on('change', () => applyFilters());
+        sliders[id] = container.noUiSlider;
+    };
+
+    const unit = data.unit_suffix || 'mm';
+    const areaUnit = unit === 'mm' ? 'mm²' : 'px²';
+    makeSlider('lengthSlider', lMin, lMax, 'lengthRangeDisplay', ` ${unit}`);
+    makeSlider('widthSlider',  wMin, wMax, 'widthRangeDisplay',  ` ${unit}`);
+    makeSlider('areaSlider',   aMin, aMax, 'areaRangeDisplay',   ` ${areaUnit}`);
+    makeSlider('arSlider',     arMin, arMax, 'arRangeDisplay', '');
+}
+
+// ─── Apply Filters ────────────────────────────────────────────────────────────
+function applyFilters() {
+    if (!dashboardData) return;
+
+    const cat = document.getElementById('categoryFilter').value;
+
+    const getRange = id => {
+        const s = document.getElementById(id);
+        if (s && s.noUiSlider) {
+            const [lo, hi] = s.noUiSlider.get(true);
+            return [parseFloat(lo), parseFloat(hi)];
+        }
+        return [null, null];
+    };
+
+    const [lMin, lMax] = getRange('lengthSlider');
+    const [wMin, wMax] = getRange('widthSlider');
+    const [aMin, aMax] = getRange('areaSlider');
+    const [arMin, arMax] = getRange('arSlider');
+
+    filteredData = dashboardData.grain_data.filter(g => {
+        const catOk = cat === 'all' || g.categories.includes(cat) || g.primary_category === cat;
+        const lenOk = !lMin || g.length_mm == null || (g.length_mm >= lMin && g.length_mm <= lMax);
+        const widOk = !wMin || g.width_mm == null || (g.width_mm >= wMin && g.width_mm <= wMax);
+        const areaOk = !aMin || g.area_mm2 == null || (g.area_mm2 >= aMin && g.area_mm2 <= aMax);
+        const arOk = !arMin || g.aspect_ratio == null || (g.aspect_ratio >= arMin && g.aspect_ratio <= arMax);
+        return catOk && lenOk && widOk && areaOk && arOk;
+    });
+
+    renderChartsFromFiltered();
+    renderTable(filteredData);
+    updateFilterBadge();
+}
+
+function updateFilterBadge() {
+    const badge = document.getElementById('filterBadge');
+    const count = document.getElementById('filterCount');
+    if (!dashboardData) return;
+    const total = dashboardData.grain_data.length;
+    const showing = filteredData.length;
+    if (showing < total) {
+        badge.style.display = 'inline-block';
+        count.textContent = showing + ' / ' + total;
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function resetFilters() {
+    document.getElementById('categoryFilter').value = 'all';
+    Object.values(sliders).forEach(s => { try { s.reset(); } catch(e) {} });
+    if (dashboardData) {
+        setupSlicers(dashboardData);
+        filteredData = [...dashboardData.grain_data];
+        renderChartsFromFiltered();
+        renderTable(filteredData);
+        updateFilterBadge();
+    }
+}
+
+// ─── Charts ───────────────────────────────────────────────────────────────────
+function renderCharts(data) {
+    const unit = data.unit_suffix || 'mm';
+    const areaUnit = unit === 'mm' ? 'mm²' : 'px²';
+
+    renderCategoryChart(data.category_distribution);
+    renderBarChart('lengthChart', data.length_distribution.labels, data.length_distribution.values, `Length (${unit})`, 'rgba(64,196,255,0.8)', 'rgba(64,196,255,0.3)');
+    renderBarChart('widthChart', data.width_distribution.labels, data.width_distribution.values, `Width (${unit})`, 'rgba(213,0,249,0.8)', 'rgba(213,0,249,0.3)');
+    renderBarChart('areaChart', data.area_distribution.labels, data.area_distribution.values, `Area (${areaUnit})`, 'rgba(0,200,83,0.8)', 'rgba(0,200,83,0.3)');
+    renderScatterChart(data.scatter_data);
+
+    // Aspect ratio distribution from grain_data
+    const arDist = computeDist(data.grain_data.map(g => g.aspect_ratio).filter(v => v != null));
+    renderBarChart('arChart', arDist.labels, arDist.values, 'Aspect Ratio', 'rgba(255,145,0,0.8)', 'rgba(255,145,0,0.3)');
+
+    // Update total grains label
+    document.getElementById('totalGrainsLabel').textContent = data.grain_data.length + ' grains';
+}
+
+function computeDist(values, bins = 8) {
+    if (!values.length) return { labels: [], values: [] };
+    const min = Math.min(...values), max = Math.max(...values);
+    if (min === max) return { labels: [min.toFixed(3)], values: [values.length] };
+    const step = (max - min) / bins;
+    const labels = Array.from({ length: bins }, (_, i) =>
+        `${(min + i * step).toFixed(2)}-${(min + (i+1)*step).toFixed(2)}`);
+    const counts = Array(bins).fill(0);
+    values.forEach(v => counts[Math.min(Math.floor((v - min) / step), bins - 1)]++);
+    return { labels, values: counts };
+}
+
+function renderChartsFromFiltered() {
+    if (!dashboardData) return;
+
+    const dist = key => computeDist(filteredData.map(g => g[key]).filter(v => v != null));
+
+    const catDist = {};
+    filteredData.forEach(g => {
+        catDist[g.primary_category] = (catDist[g.primary_category] || 0) + 1;
+    });
+
+    const unit = dashboardData.unit_suffix || 'mm';
+    const areaUnit = unit === 'mm' ? 'mm²' : 'px²';
+
+    renderCategoryChart(catDist);
+    const ld = dist('length_mm');
+    renderBarChart('lengthChart', ld.labels, ld.values, `Length (${unit})`, 'rgba(64,196,255,0.8)', 'rgba(64,196,255,0.3)');
+    const wd = dist('width_mm');
+    renderBarChart('widthChart', wd.labels, wd.values, `Width (${unit})`, 'rgba(213,0,249,0.8)', 'rgba(213,0,249,0.3)');
+    const ad = dist('area_mm2');
+    renderBarChart('areaChart', ad.labels, ad.values, `Area (${areaUnit})`, 'rgba(0,200,83,0.8)', 'rgba(0,200,83,0.3)');
+    const ard = dist('aspect_ratio');
+    renderBarChart('arChart', ard.labels, ard.values, 'Aspect Ratio', 'rgba(255,145,0,0.8)', 'rgba(255,145,0,0.3)');
+
+    const scatter = filteredData
+        .filter(g => g.length_mm != null && g.width_mm != null)
+        .map(g => ({ x: g.length_mm, y: g.width_mm, category: g.primary_category }));
+    renderScatterChart(scatter);
+
+    document.getElementById('totalGrainsLabel').textContent = filteredData.length + ' grains';
+}
+
+function renderCategoryChart(catDist) {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    const labels = Object.keys(catDist).map(c => c.replace(/_/g, ' '));
+    const values = Object.values(catDist);
+    const colors = Object.keys(catDist).map(c => categoryColors[c] || '#607d8b');
+
+    if (charts.category) charts.category.destroy();
+    charts.category = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: 'rgba(9,18,40,0.9)', hoverOffset: 8 }]
+        },
+        options: {
+            ...chartDefaults,
+            cutout: '62%',
+            plugins: {
+                ...chartDefaults.plugins,
+                legend: { position: 'right', labels: { color: '#c8d8f0', font: { family: 'Inter', size: 11 }, boxWidth: 12, padding: 12 } },
+            }
+        }
+    });
+}
+
+function renderBarChart(canvasId, labels, values, label, color, colorBg) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label,
+                data: values,
+                backgroundColor: colorBg || color,
+                borderColor: color,
+                borderWidth: 1.5,
+                borderRadius: 5,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            ...chartDefaults,
+            scales: axisDefaults('', 'Count'),
+            plugins: { ...chartDefaults.plugins, legend: { display: false } }
+        }
+    });
+}
+
+function renderScatterChart(points) {
+    const ctx = document.getElementById('scatterChart').getContext('2d');
+    const categories = [...new Set(points.map(p => p.category))];
+    const datasets = categories.map(cat => ({
+        label: cat.replace(/_/g, ' '),
+        data: points.filter(p => p.category === cat).map(p => ({ x: p.x, y: p.y })),
+        backgroundColor: (categoryColors[cat] || '#607d8b') + 'bb',
+        borderColor: categoryColors[cat] || '#607d8b',
+        borderWidth: 1,
+        pointRadius: 4,
+        pointHoverRadius: 7,
+    }));
+
+    if (charts.scatter) charts.scatter.destroy();
+    charts.scatter = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+            ...chartDefaults,
+            scales: axisDefaults('Length (mm)', 'Width (mm)'),
+            plugins: {
+                ...chartDefaults.plugins,
+                legend: { position: 'bottom', labels: { color: '#c8d8f0', font: { family: 'Inter', size: 10 }, boxWidth: 10, padding: 10 } },
+            }
+        }
+    });
+}
+
+// ─── Quality Metrics ──────────────────────────────────────────────────────────
+function renderQuality(quality) {
+    const metrics = [
+        { label: 'Total Grains',     value: quality.total_grains,              bar: quality.total_grains > 0 ? 100 : 0, barColor: '#40c4ff' },
+        { label: 'Broken %',         value: (quality.broken_pct ?? 0).toFixed(2) + '%', bar: quality.broken_pct ?? 0, barColor: '#ff1744' },
+        { label: 'Uniformity Index', value: (quality.uniformity_index ?? 0).toFixed(2) + '%', bar: quality.uniformity_index ?? 0, barColor: '#00c853' },
+        { label: 'Abnormal %',       value: (quality.abnormal_pct ?? 0).toFixed(2) + '%', bar: quality.abnormal_pct ?? 0, barColor: '#ff9100' },
+        { label: 'Mean Aspect Ratio', value: (quality.mean_aspect_ratio ?? 0).toFixed(3), bar: Math.min((quality.mean_aspect_ratio ?? 0) / 5 * 100, 100), barColor: '#d500f9' },
+        { label: 'Shape Consistency', value: (quality.shape_consistency ?? 0).toFixed(3), bar: (quality.shape_consistency ?? 0) * 100, barColor: '#00e5ff' },
+        { label: 'Grain Density',    value: (quality.grain_density ?? 0).toFixed(4), bar: Math.min((quality.grain_density ?? 0) * 10000, 100), barColor: '#69f0ae' },
+        { label: 'Orientation Std',  value: (quality.orientation_std ?? 0).toFixed(2) + '°', bar: Math.min((quality.orientation_std ?? 0) / 90 * 100, 100), barColor: '#ffd740' },
+    ];
+
+    document.getElementById('qualityMetrics').innerHTML = metrics.map(m => `
+        <div class="metric-item">
+            <div class="metric-label">${m.label}</div>
+            <div class="metric-value">${m.value !== undefined && m.value !== null ? m.value : '—'}</div>
+            <div class="metric-bar">
+                <div class="metric-bar-fill" style="width:${m.bar.toFixed(1)}%; background:${m.barColor};"></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ─── Grading ──────────────────────────────────────────────────────────────────
+function renderGrading(grading) {
+    const badge = document.getElementById('gradeBadge');
+    badge.textContent = grading.grade || '—';
+    badge.className = 'grade-badge-dashboard ' + (gradeClassMap[grading.grade] || '');
+
+    const exp = document.getElementById('gradingExplanation');
+    if (grading.explanation) {
+        exp.innerHTML = grading.explanation.replace(/\n/g, '<br>');
+    } else {
+        exp.innerHTML = '<p class="text-muted">No grading explanation available.</p>';
+    }
+}
+
+// ─── Table ────────────────────────────────────────────────────────────────────
+function renderTable(data) {
+    const tbody = document.getElementById('grainTableBody');
+    document.getElementById('grainCount').textContent = data.length;
+
+    // Apply current sort
+    const sorted = [...data].sort((a, b) => {
+        const av = a[currentSortKey] ?? -Infinity;
+        const bv = b[currentSortKey] ?? -Infinity;
+        return sortAsc ? (av > bv ? 1 : av < bv ? -1 : 0) : (av < bv ? 1 : av > bv ? -1 : 0);
+    });
+
+    tbody.innerHTML = sorted.map(g => `
+        <tr>
+            <td><strong style="color:var(--primary-light);">${g.label}</strong></td>
+            <td>
+                <span class="badge" style="background:${(categoryColors[g.primary_category] || '#607d8b') + '22'};
+                      color:${categoryColors[g.primary_category] || '#9e9e9e'};
+                      border:1px solid ${(categoryColors[g.primary_category] || '#607d8b') + '55'};">
+                    ${g.primary_category.replace(/_/g, ' ')}
+                </span>
+            </td>
+            <td>${g.length_mm != null ? g.length_mm.toFixed(3) : '—'}</td>
+            <td>${g.width_mm != null ? g.width_mm.toFixed(3) : '—'}</td>
+            <td>${g.area_mm2 != null ? g.area_mm2.toFixed(3) : '—'}</td>
+            <td>${g.aspect_ratio != null ? g.aspect_ratio.toFixed(3) : '—'}</td>
+            <td>${g.circularity != null ? g.circularity.toFixed(3) : '—'}</td>
+            <td>${g.solidity != null ? g.solidity.toFixed(3) : '—'}</td>
+            <td>${g.eccentricity != null ? g.eccentricity.toFixed(3) : '—'}</td>
+        </tr>
+    `).join('');
+}
+
+function filterTable() {
+    const term = document.getElementById('tableSearch').value.toLowerCase();
+    document.querySelectorAll('#grainTableBody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+    });
+}
+
+function sortTable() {
+    const key = document.getElementById('tableSortBy').value;
+    if (currentSortKey === key) {
+        sortAsc = !sortAsc;
+    } else {
+        currentSortKey = key;
+        sortAsc = true;
+    }
+    renderTable(filteredData);
+}
+
+function fsAnnotated() {
+    const img = document.getElementById('annotatedImg');
+    if (img && img.src) openImgModal(img.src);
+}
+
+function exportPowerBI() {
+    window.location.href = '/api/export/powerbi';
+}
+
+// ─── Bootstrap ───────────────────────────────────────────────────────────────
+loadDashboardData();
+</script>
+
+<style>
+/* Responsive KPI grid */
+@media (max-width: 1200px) {
+    #kpiCards { grid-template-columns: repeat(3, 1fr) !important; }
+}
+@media (max-width: 768px) {
+    #kpiCards { grid-template-columns: repeat(2, 1fr) !important; }
+    .dashboard-container > div[style*="grid-template-columns:1fr 1.6fr"],
+    .dashboard-container > div[style*="grid-template-columns:1.6fr 1fr"],
+    .dashboard-container > div[style*="grid-template-columns:repeat(3"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+{% endblock %}

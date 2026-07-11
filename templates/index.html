@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Rice Analyzer{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div style="max-width:1600px; margin:0 auto;">
+
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-orb hero-orb-1"></div>
+        <div class="hero-orb hero-orb-2"></div>
+        <div style="position:relative; z-index:1;">
+            <div class="hero-title">
+                <i class="bi bi-graph-up-arrow"></i>
+                Rice Grain Morphometric Analysis System
+            </div>
+            <p class="hero-description">
+                AI-powered computer vision pipeline for automated rice grain measurement, morphological classification, and quality grading.
+            </p>
+            <div class="hero-actions">
+                <a href="/analysis" class="btn btn-primary"><i class="bi bi-search"></i> Start Analysis</a>
+                <a href="/dashboard" class="btn btn-powerbi"><i class="bi bi-bar-chart-line-fill"></i> Power BI Dashboard</a>
+                <a href="/camera" class="btn btn-outline-light"><i class="bi bi-camera-video"></i> Camera</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-4 mb-3">
+        <div class="stat-card">
+            <div class="stat-icon">📷</div>
+            <div class="stat-value" id="stat-camera">—</div>
+            <div class="stat-label">Camera Status</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📏</div>
+            <div class="stat-value" id="stat-calibration" style="font-size:1.3rem;">—</div>
+            <div class="stat-label">Calibration</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🔬</div>
+            <div class="stat-value" id="stat-analyses">—</div>
+            <div class="stat-label">Analyses Run</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value" id="stat-reports">—</div>
+            <div class="stat-label">Report Files</div>
+        </div>
+    </div>
+
+    <!-- Latest Analysis Card -->
+    <div class="card" id="latest-analysis-card" style="display:none; padding:0; overflow:hidden; margin-bottom:2rem;">
+        <div class="card-header" style="padding:1rem 1.5rem;">
+            <div class="card-title"><i class="bi bi-clipboard-data"></i> Latest Analysis Result</div>
+            <div style="display:flex; gap:8px;">
+                <a href="/dashboard" class="btn btn-powerbi btn-sm">
+                    <i class="bi bi-bar-chart-line-fill"></i> Open Dashboard
+                </a>
+                <a href="/analysis" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-search"></i> New Analysis
+                </a>
+            </div>
+        </div>
+        <div id="latest-analysis-content" style="padding:1.5rem;"></div>
+    </div>
+
+    <!-- Pipeline + Quick Actions -->
+    <div class="grid grid-2">
+        <!-- Pipeline Overview -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="bi bi-diagram-2"></i> Analysis Pipeline</div>
+            </div>
+            <div>
+                <div class="step-indicator"><div class="step-num">1</div><div class="step-text">Camera Initialization &amp; Calibration</div><div class="step-status" id="step1-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">2</div><div class="step-text">Automated Image Acquisition</div><div class="step-status" id="step2-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">3</div><div class="step-text">Image Preprocessing (CLAHE, Morphology)</div><div class="step-status" id="step3-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">4</div><div class="step-text">Classical Image Segmentation (Watershed)</div><div class="step-status" id="step4-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">5</div><div class="step-text">Grain Detection &amp; Morphometric Measurement</div><div class="step-status" id="step5-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">6</div><div class="step-text">Dataset-Level Statistical Analysis</div><div class="step-status" id="step6-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">7</div><div class="step-text">Grain Classification (Type &amp; Size)</div><div class="step-status" id="step7-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">8</div><div class="step-text">Image-Level Quality Metrics</div><div class="step-status" id="step8-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">9</div><div class="step-text">Report Generation (CSV, Excel, JSON, Plots)</div><div class="step-status" id="step9-status">⏳</div></div>
+                <div class="step-indicator"><div class="step-num">10</div><div class="step-text">Final Verdict &amp; Grading</div><div class="step-status" id="step10-status">⏳</div></div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div style="display:flex; flex-direction:column; gap:1.25rem;">
+            <div class="card" style="margin-bottom:0; flex:1; cursor:pointer; transition:all 0.3s ease;"
+                 onclick="window.location.href='/camera'"
+                 onmouseover="this.style.borderColor='rgba(0,200,83,0.3)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+                <div style="display:flex; align-items:center; gap:1.25rem;">
+                    <div style="font-size:2.5rem; width:60px; text-align:center; flex-shrink:0;">📷</div>
+                    <div>
+                        <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.3rem; color:#fff;">Camera Control</h3>
+                        <p style="color:var(--text-muted); margin:0; font-size:0.87rem;">View live feed, auto-detect sensor properties, and capture images for analysis</p>
+                    </div>
+                    <i class="bi bi-chevron-right" style="margin-left:auto; color:var(--text-muted); flex-shrink:0;"></i>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:0; flex:1; cursor:pointer; transition:all 0.3s ease;"
+                 onclick="window.location.href='/analysis'"
+                 onmouseover="this.style.borderColor='rgba(0,200,83,0.3)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+                <div style="display:flex; align-items:center; gap:1.25rem;">
+                    <div style="font-size:2.5rem; width:60px; text-align:center; flex-shrink:0;">🔬</div>
+                    <div>
+                        <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.3rem; color:#fff;">Run Analysis</h3>
+                        <p style="color:var(--text-muted); margin:0; font-size:0.87rem;">Upload an image and run the full 10-phase grain analysis pipeline</p>
+                    </div>
+                    <i class="bi bi-chevron-right" style="margin-left:auto; color:var(--text-muted); flex-shrink:0;"></i>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:0; flex:1; cursor:pointer; transition:all 0.3s ease;"
+                 onclick="window.location.href='/reports'"
+                 onmouseover="this.style.borderColor='rgba(242,200,17,0.3)'"
+                 onmouseout="this.style.borderColor='var(--border)'">
+                <div style="display:flex; align-items:center; gap:1.25rem;">
+                    <div style="font-size:2.5rem; width:60px; text-align:center; flex-shrink:0;">📊</div>
+                    <div>
+                        <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.3rem; color:#fff;">Reports &amp; Dashboard</h3>
+                        <p style="color:var(--text-muted); margin:0; font-size:0.87rem;">Browse CSV, Excel, JSON reports and open the interactive Power BI dashboard</p>
+                    </div>
+                    <i class="bi bi-chevron-right" style="margin-left:auto; color:var(--text-muted); flex-shrink:0;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(async function() {
+    // Camera status
+    try {
+        const res = await fetch('/api/camera/info');
+        const data = await res.json();
+        const el = document.getElementById('stat-camera');
+        if (data.success) {
+            el.textContent = 'Connected';
+            el.style.color = 'var(--success)';
+            document.getElementById('step1-status').textContent = '✅';
+            document.getElementById('step2-status').textContent = '✅';
+            if (data.is_calibrated) {
+                document.getElementById('stat-calibration').textContent = data.pixels_per_mm.toFixed(1) + ' px/mm';
+                document.getElementById('stat-calibration').style.color = 'var(--success)';
+            } else {
+                document.getElementById('stat-calibration').textContent = 'Not Calibrated';
+                document.getElementById('stat-calibration').style.color = 'var(--warning)';
+            }
+        } else {
+            el.textContent = 'Not Found';
+            el.style.color = 'var(--danger)';
+            document.getElementById('step1-status').textContent = '❌';
+            document.getElementById('stat-calibration').textContent = 'No Camera';
+            document.getElementById('stat-calibration').style.color = 'var(--text-muted)';
+        }
+    } catch(e) {
+        document.getElementById('stat-camera').textContent = 'Error';
+        document.getElementById('stat-camera').style.color = 'var(--danger)';
+    }
+
+    // Report count
+    try {
+        const res = await fetch('/api/reports');
+        const data = await res.json();
+        if (data.success) {
+            const total = Object.values(data.reports).reduce((s, a) => s + a.length, 0);
+            const el = document.getElementById('stat-reports');
+            animateCounter(el, total, 700, 0);
+        }
+    } catch(e) {
+        document.getElementById('stat-reports').textContent = '0';
+    }
+
+    // Latest analysis
+    try {
+        const res = await fetch('/api/reports/latest');
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('stat-analyses').textContent = '1+';
+            document.getElementById('latest-analysis-card').style.display = 'block';
+
+            // Mark pipeline steps done
+            for (let i = 3; i <= 10; i++) {
+                const el = document.getElementById(`step${i}-status`);
+                if (el) el.textContent = '✅';
+            }
+
+            const grade = data.grading?.grade || '—';
+            const gradeClass = grade.toLowerCase().replace(/\s+/g, '-');
+            const brokenPct = data.quality?.broken_pct ?? 0;
+            const uniformity = data.quality?.uniformity_index ?? 0;
+
+            let gradeColor = '#00c853';
+            if (grade === 'Reject') gradeColor = '#ff1744';
+            else if (grade === 'Grade C') gradeColor = '#ff9100';
+            else if (grade === 'Grade B') gradeColor = '#40c4ff';
+            else if (grade === 'Premium') gradeColor = '#ffd740';
+
+            document.getElementById('latest-analysis-content').innerHTML = `
+                <div class="grid grid-4" style="margin-bottom:1rem;">
+                    <div class="stat-card" style="padding:1rem;">
+                        <div class="stat-icon" style="font-size:1.5rem;">🌾</div>
+                        <div class="stat-value" id="grainCountVal">${data.num_grains}</div>
+                        <div class="stat-label">Grains Detected</div>
+                    </div>
+                    <div class="stat-card" style="padding:1rem; border-color:${brokenPct > 10 ? 'rgba(255,23,68,0.3)' : 'rgba(0,200,83,0.3)'};">
+                        <div class="stat-icon" style="font-size:1.5rem;">${brokenPct > 10 ? '⚠️' : '✅'}</div>
+                        <div class="stat-value" style="color:${brokenPct > 10 ? 'var(--danger)' : 'var(--success)'};">${brokenPct.toFixed(1)}%</div>
+                        <div class="stat-label">Broken Grains</div>
+                    </div>
+                    <div class="stat-card" style="padding:1rem;">
+                        <div class="stat-icon" style="font-size:1.5rem;">📐</div>
+                        <div class="stat-value" style="color:${uniformity < 70 ? 'var(--warning)' : 'var(--success)'};">${uniformity.toFixed(1)}%</div>
+                        <div class="stat-label">Uniformity</div>
+                    </div>
+                    <div class="stat-card" style="padding:1rem; border-color:${gradeColor}33;">
+                        <div class="stat-icon" style="font-size:1.5rem;">🏆</div>
+                        <div class="stat-value" style="color:${gradeColor}; font-size:1.3rem;">${grade}</div>
+                        <div class="stat-label">Final Grade</div>
+                    </div>
+                </div>
+                ${data.annotated_preview ? `
+                <div style="border-radius:12px; overflow:hidden; border:1px solid var(--border); cursor:pointer; max-height:220px;"
+                     onclick="window.location.href='/dashboard'"
+                     title="Click to open Power BI Dashboard">
+                    <img src="${data.annotated_preview}" style="width:100%; height:220px; object-fit:cover; display:block; transition:transform 0.4s ease;"
+                         onmouseover="this.style.transform='scale(1.03)'"
+                         onmouseout="this.style.transform='scale(1)'"
+                         alt="Annotated Analysis">
+                </div>
+                <p style="text-align:center; margin-top:0.5rem; font-size:0.82rem; color:var(--text-muted);">
+                    <i class="bi bi-bar-chart-line-fill" style="color:#f2c811;"></i>
+                    Click image to open Power BI Dashboard
+                </p>` : ''}
+            `;
+            animateCounter(document.getElementById('grainCountVal'), data.num_grains, 900, 0);
+        } else {
+            document.getElementById('stat-analyses').textContent = '0';
+        }
+    } catch(e) {
+        document.getElementById('stat-analyses').textContent = '0';
+    }
+})();
+</script>
+{% endblock %}

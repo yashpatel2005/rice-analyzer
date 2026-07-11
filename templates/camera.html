@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Camera Control — Rice Analyzer{% endblock %}
+{% block page_title %}Camera Control{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">📷 Camera Control</h1>
+    <p class="page-subtitle">Auto-detect camera properties, live preview, capture & calibration</p>
+
+    <div class="grid grid-2">
+        <!-- Live Preview -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🎥 Live Preview</div>
+                <button class="btn btn-secondary btn-sm" onclick="refreshPreview()">🔄 Refresh</button>
+            </div>
+            <div class="image-preview" id="preview-container">
+                <div class="image-preview-empty">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📷</div>
+                    <p>Click "Refresh" to view live camera feed</p>
+                </div>
+            </div>
+            <div class="mt-2 text-center">
+                <button class="btn btn-primary" onclick="captureFrame()">📸 Capture Frame</button>
+                <button class="btn btn-secondary" onclick="analyzeCaptured()" id="analyze-captured-btn" disabled>🔬 Analyze Captured</button>
+            </div>
+            <div id="capture-info" class="mt-2 hidden"></div>
+        </div>
+
+        <!-- Camera Properties -->
+        <div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📋 Auto-Detected Camera Properties</div>
+                    <button class="btn btn-secondary btn-sm" onclick="loadCameraInfo()">🔄 Re-detect</button>
+                </div>
+                <div id="camera-properties">
+                    <p class="text-muted text-center">Click "Re-detect" to scan camera properties</p>
+                </div>
+            </div>
+
+            <!-- Optimal Config -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">⚙️ Optimal Capture Configuration</div>
+                </div>
+                <div id="optimal-config">
+                    <p class="text-muted">Load camera info to see recommendations</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calibration -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📏 Calibration</div>
+        </div>
+        <div class="grid grid-3">
+            <!-- Checkerboard -->
+            <div>
+                <h4 class="mb-1">Checkerboard Calibration</h4>
+                <p class="text-muted font-sm mb-2">Upload checkerboard images to calibrate pixels-per-mm</p>
+                <div class="form-group">
+                    <label>Square Size (mm)</label>
+                    <input type="number" class="form-control" id="cb-square-size" value="25.0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Checkerboard Images</label>
+                    <input type="file" class="form-control" id="cb-images" multiple accept="image/*">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="calibrateCheckerboard()">Calibrate</button>
+            </div>
+
+            <!-- Known Object -->
+            <div>
+                <h4 class="mb-1">Known Object Calibration</h4>
+                <p class="text-muted font-sm mb-2">Upload an image with an object of known length</p>
+                <div class="form-group">
+                    <label>Object Length (mm)</label>
+                    <input type="number" class="form-control" id="ko-length" value="10.0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Calibration Image</label>
+                    <input type="file" class="form-control" id="ko-image" accept="image/*">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="calibrateKnownObject()">Calibrate</button>
+            </div>
+
+            <!-- Manual -->
+            <div>
+                <h4 class="mb-1">Manual Calibration</h4>
+                <p class="text-muted font-sm mb-2">Enter pixels-per-mm directly</p>
+                <div class="form-group">
+                    <label>Pixels per Millimetre</label>
+                    <input type="number" class="form-control" id="manual-ppm" value="0" step="0.01">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="calibrateManual()">Set Calibration</button>
+            </div>
+        </div>
+        <div id="calibration-result" class="mt-2"></div>
+    </div>
+</div>
+
+<script>
+let capturedImagePath = null;
+
+async function loadCameraInfo() {
+    const res = await fetch('/api/camera/info');
+    const data = await res.json();
+    const propsDiv = document.getElementById('camera-properties');
+    const configDiv = document.getElementById('optimal-config');
+
+    if (!data.success) {
+        propsDiv.innerHTML = `<p class="text-danger">⚠️ ${data.error}</p>`;
+        configDiv.innerHTML = '';
+        return;
+    }
+
+    // Properties
+    let html = '<div class="property-grid">';
+    for (const [key, val] of Object.entries(data.properties)) {
+        html += `
+            <div class="property-item">
+                <div class="prop-key">${key}</div>
+                <div class="prop-val">${typeof val === 'number' ? val.toFixed(2) : val}</div>
+            </div>`;
+    }
+    html += '</div>';
+    propsDiv.innerHTML = html;
+
+    // Calibration status
+    if (data.is_calibrated) {
+        propsDiv.innerHTML += `
+            <div class="mt-2 p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px; border: 1px solid rgba(76,175,80,0.3);">
+                ✅ <strong>Calibrated:</strong> ${data.pixels_per_mm.toFixed(4)} px/mm
+                <button class="btn btn-secondary btn-sm" style="margin-left: 1rem;" onclick="useCalibration()">Use in Analysis</button>
+            </div>`;
+    } else {
+        propsDiv.innerHTML += `
+            <div class="mt-2 p-2" style="background: rgba(255,152,0,0.1); border-radius: 8px; border: 1px solid rgba(255,152,0,0.3);">
+                ⚠️ <strong>Not Calibrated</strong> — Measurements will be in pixels only
+            </div>`;
+    }
+
+    // Optimal config
+    let configHtml = '<div class="property-grid">';
+    for (const [key, val] of Object.entries(data.optimal_config)) {
+        configHtml += `
+            <div class="property-item">
+                <div class="prop-key">${key.replace(/_/g, ' ')}</div>
+                <div class="prop-val" style="font-size: 0.95rem;">${val}</div>
+            </div>`;
+    }
+    configHtml += '</div>';
+    configDiv.innerHTML = configHtml;
+}
+
+async function refreshPreview() {
+    const container = document.getElementById('preview-container');
+    container.innerHTML = '<div class="image-preview-empty"><div class="spinner"></div><p>Loading preview...</p></div>';
+    try {
+        const res = await fetch('/api/camera/preview');
+        const data = await res.json();
+        if (data.success) {
+            container.innerHTML = `<img src="${data.image}" alt="Camera Preview">`;
+        } else {
+            container.innerHTML = `<div class="image-preview-empty"><p class="text-danger">⚠️ ${data.error}</p></div>`;
+        }
+    } catch (e) {
+        container.innerHTML = `<div class="image-preview-empty"><p class="text-danger">⚠️ Failed to get preview</p></div>`;
+    }
+}
+
+async function captureFrame() {
+    showSpinner('Capturing frame...');
+    try {
+        const res = await fetch('/api/camera/capture', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('preview-container').innerHTML = `<img src="${data.image}" alt="Captured Frame">`;
+            capturedImagePath = data.metadata.filepath;
+            document.getElementById('analyze-captured-btn').disabled = false;
+            document.getElementById('capture-info').innerHTML = `
+                <div class="p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px;">
+                    ✅ Captured: <strong>${data.metadata.filename}</strong><br>
+                    Resolution: ${data.metadata.resolution} | Calibration: ${data.metadata.calibration_status}
+                </div>`;
+            document.getElementById('capture-info').classList.remove('hidden');
+            showToast('Frame captured successfully!', 'success');
+        } else {
+            showToast('Capture failed: ' + data.error, 'error');
+        }
+    } catch (e) {
+        showToast('Capture failed: ' + e.message, 'error');
+    }
+    hideSpinner();
+}
+
+function analyzeCaptured() {
+    if (!capturedImagePath) return;
+    window.location.href = `/analysis?img=${encodeURIComponent(capturedImagePath)}`;
+}
+
+async function calibrateCheckerboard() {
+    const files = document.getElementById('cb-images').files;
+    if (!files.length) { showToast('Please select images', 'warning'); return; }
+    const formData = new FormData();
+    formData.append('method', 'checkerboard');
+    formData.append('square_size_mm', document.getElementById('cb-square-size').value);
+    for (const f of files) formData.append('images', f);
+
+    showSpinner('Calibrating...');
+    try {
+        const res = await fetch('/api/camera/calibrate', { method: 'POST', body: formData });
+        const data = await res.json();
+        showCalibrationResult(data);
+    } catch (e) {
+        showToast('Calibration failed: ' + e.message, 'error');
+    }
+    hideSpinner();
+}
+
+async function calibrateKnownObject() {
+    const file = document.getElementById('ko-image').files[0];
+    if (!file) { showToast('Please select an image', 'warning'); return; }
+    const formData = new FormData();
+    formData.append('method', 'known_object');
+    formData.append('object_length_mm', document.getElementById('ko-length').value);
+    formData.append('image', file);
+
+    showSpinner('Calibrating...');
+    try {
+        const res = await fetch('/api/camera/calibrate', { method: 'POST', body: formData });
+        const data = await res.json();
+        showCalibrationResult(data);
+    } catch (e) {
+        showToast('Calibration failed: ' + e.message, 'error');
+    }
+    hideSpinner();
+}
+
+async function calibrateManual() {
+    const ppm = parseFloat(document.getElementById('manual-ppm').value);
+    if (ppm <= 0) { showToast('Enter a valid pixels-per-mm value', 'warning'); return; }
+
+    showSpinner('Setting calibration...');
+    try {
+        const res = await fetch('/api/camera/calibrate/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pixels_per_mm: ppm })
+        });
+        const data = await res.json();
+        showCalibrationResult(data);
+    } catch (e) {
+        showToast('Calibration failed: ' + e.message, 'error');
+    }
+    hideSpinner();
+}
+
+function showCalibrationResult(data) {
+    const div = document.getElementById('calibration-result');
+    if (data.success) {
+        div.innerHTML = `
+            <div class="p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px; border: 1px solid rgba(76,175,80,0.3);">
+                ✅ <strong>Calibration Successful!</strong><br>
+                Pixels per mm: <strong>${data.pixels_per_mm.toFixed(4)}</strong><br>
+                mm per pixel: <strong>${data.mm_per_pixel.toFixed(6)}</strong><br>
+                Method: ${data.method || 'checkerboard'}
+            </div>`;
+        showToast('Calibration successful!', 'success');
+        loadCameraInfo();
+    } else {
+        div.innerHTML = `<div class="p-2 text-danger">❌ ${data.error}</div>`;
+        showToast('Calibration failed: ' + data.error, 'error');
+    }
+}
+
+function useCalibration() {
+    showToast('Calibration will be used in next analysis', 'info');
+}
+
+// Load on page open
+loadCameraInfo();
+refreshPreview();
+</script>
+{% endblock %}
