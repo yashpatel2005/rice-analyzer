@@ -35,4 +35,4 @@ htmlcov/
 .pytest_cache/
 
 # Jupyter
-.ipynb_checkpoints/
+.ipynb_checkpoints/.venv_py/

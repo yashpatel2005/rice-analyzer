@@ -1,4 +1,5 @@
-app.py
-core/
-requirements.txt
-config.py
+/app.py
+/core/
+/requirements.txt
+/config.py
+.venv_py/
