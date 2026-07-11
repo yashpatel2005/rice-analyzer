@@ -120,7 +120,7 @@ class Segmenter:
         )
         if len(coords) == 0:
             # Fallback: use connected components
-            labels, num_labels, _, _ = cv2.connectedComponentsWithStats(binary, 8)
+            num_labels, labels, _, _ = cv2.connectedComponentsWithStats(binary, 8)
             return labels, num_labels
 
         markers = np.zeros(binary.shape, dtype=np.int32)
