@@ -2,7 +2,7 @@
   "buildCommand": "python3 build_static.py",
   "outputDirectory": "dist",
   "devCommand": "echo 'Static site'",
-  "installCommand": "pip3 install Jinja2",
+  "installCommand": "pip install Jinja2",
   "framework": null,
   "rewrites": [
     {
