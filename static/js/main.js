@@ -4,6 +4,24 @@
    ================================================================ */
 
 // ------------------------------------------------------------------
+// API Base URL (from api-config.js)
+// ------------------------------------------------------------------
+const API_BASE = window.API_BASE_URL || '';
+
+// Helper for API calls
+async function apiFetch(endpoint, options = {}) {
+    const url = `${API_BASE}${endpoint}`;
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+    return response.json();
+}
+
+// ------------------------------------------------------------------
 // Sidebar toggle (mobile)
 // ------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
@@ -43,8 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Check calibration status (does NOT power on the camera)
-    fetch('/api/camera/calibration_status')
-        .then(r => r.json())
+    apiFetch('/api/camera/calibration_status')
         .then(data => {
             const el = document.getElementById('calibrationStatus');
             if (!el) return;
