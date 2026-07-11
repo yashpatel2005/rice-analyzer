@@ -10,11 +10,7 @@ available, in millimetres.
 
 import cv2
 import numpy as np
-from skimage.measure import regionprops, label as sk_label
-from skimage.measure import moments_hu
 from typing import Dict, Any, List, Optional
-
-import config
 
 
 class GrainMeasurer:
@@ -59,7 +55,6 @@ class GrainMeasurer:
         r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
         r_max = r.max() if r.max() > 0 else 1.0
         rn = r / r_max
-        theta = np.arctan2(y - cy, x - cx)
 
         zernikes = []
         for n in range(order + 1):
@@ -236,9 +231,6 @@ class GrainMeasurer:
         pts = contour.reshape(-1, 2)
         if len(pts) < 2:
             return 0.0, 0.0
-
-        # Convex hull points
-        hull = cv2.convexHull(contour).reshape(-1, 2)
 
         # Try rotating calipers
         try:

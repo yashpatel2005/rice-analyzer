@@ -15,7 +15,6 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
@@ -24,11 +23,13 @@ import os
 
 import config
 
+matplotlib.use("Agg")
+
 
 class ReportGenerator:
     """Create all report artefacts for a single analysis run."""
 
-    def __init__(self, output_dir: str = None):
+    def __init__(self, output_dir: Optional[str] = None):
         self.output_dir = output_dir or config.OUTPUT_DIR
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.run_id = f"run_{self.timestamp}"
@@ -130,7 +131,7 @@ class ReportGenerator:
         quality: Dict[str, Any],
         classifications: List[Dict[str, Any]],
         grading: Dict[str, Any],
-        metadata: Dict[str, Any] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Export the complete analysis to JSON."""
         data = {

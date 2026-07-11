@@ -13,10 +13,9 @@ Each individual grain is isolated as a separate labelled object.
 
 import cv2
 import numpy as np
-from scipy import ndimage
 from skimage.feature import peak_local_max
 from skimage.segmentation import watershed as sk_watershed
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 import config
 
@@ -56,10 +55,10 @@ class Segmenter:
     # ------------------------------------------------------------------
     # Connected components
     # ------------------------------------------------------------------
-    def connected_components(self, binary: np.ndarray) -> Tuple[np.ndarray, int]:
+    def connected_components(self, binary: np.ndarray) -> Tuple[np.ndarray, int, np.ndarray, np.ndarray]:
         """Label connected components (8-connectivity)."""
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
-            binary, connectivity=8
+            binary.astype(np.uint8), connectivity=8
         )
         return labels, num_labels, stats, centroids
 
@@ -68,7 +67,7 @@ class Segmenter:
     # ------------------------------------------------------------------
     def filter_by_area(
         self, labels: np.ndarray, num_labels: int, stats: np.ndarray,
-        min_area: int = None, max_area: int = None,
+        min_area: Optional[int] = None, max_area: Optional[int] = None,
     ) -> Tuple[np.ndarray, int, List[int]]:
         """Remove components outside the area range."""
         if min_area is None:
@@ -93,7 +92,7 @@ class Segmenter:
     # Watershed for touching grains
     # ------------------------------------------------------------------
     def watershed_separation(
-        self, binary: np.ndarray, min_area: int = None, max_area: int = None,
+        self, binary: np.ndarray, min_area: Optional[int] = None, max_area: Optional[int] = None,
     ) -> Tuple[np.ndarray, int]:
         """
         Separate touching grains using distance transform + watershed.
@@ -120,7 +119,7 @@ class Segmenter:
         )
         if len(coords) == 0:
             # Fallback: use connected components
-            num_labels, labels, _, _ = cv2.connectedComponentsWithStats(binary, 8)
+            num_labels, labels, _, _ = cv2.connectedComponentsWithStats(binary.astype(np.uint8), 8)
             return labels, num_labels
 
         markers = np.zeros(binary.shape, dtype=np.int32)
@@ -197,13 +196,10 @@ class Segmenter:
             )
             if num_ws > 0:
                 labels_final = labels_ws
-                num_final = num_ws
             else:
                 labels_final = labels_filtered
-                num_final = num_filtered
         else:
             labels_final = labels_filtered
-            num_final = num_filtered
 
         # Extract contours
         grains = self.extract_contours(labels_final)

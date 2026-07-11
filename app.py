@@ -64,7 +64,9 @@ from core.grading import GradingEngine
 # ------------------------------------------------------------------
 # Flask app
 # ------------------------------------------------------------------
-class NumpyJSONEncoder(json.JSONEncoder):
+from flask.json.provider import DefaultJSONProvider
+
+class NumpyJSONProvider(DefaultJSONProvider):
     """Handle numpy types, NaN/Inf, and tuples in JSON serialization."""
     def default(self, obj):
         if isinstance(obj, (np.integer,)):
@@ -79,7 +81,7 @@ class NumpyJSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 app = Flask(__name__)
-app.json_encoder = NumpyJSONEncoder
+app.json = NumpyJSONProvider(app)
 CORS(app)
 app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
 

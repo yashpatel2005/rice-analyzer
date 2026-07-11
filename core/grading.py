@@ -12,7 +12,7 @@ first match.  Every criterion is logged so the verdict is fully
 explainable.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, Optional
 
 import config
 
@@ -29,7 +29,7 @@ class GradingEngine:
         "reject": "Reject",
     }
 
-    def __init__(self, rules: dict = None):
+    def __init__(self, rules: Optional[dict] = None):
         self.rules = rules or config.GRADING_RULES
 
     # ------------------------------------------------------------------
@@ -124,7 +124,7 @@ class GradingEngine:
     # Explanation
     # ------------------------------------------------------------------
     @staticmethod
-    def _build_explanation(selected: Dict[str, Any], quality: Dict[str, Any]) -> str:
+    def _build_explanation(selected: Optional[Dict[str, Any]], quality: Dict[str, Any]) -> str:
         if selected is None:
             return "Sample does not meet minimum quality criteria."
         grade = selected["label"]

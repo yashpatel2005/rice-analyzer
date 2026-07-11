@@ -16,8 +16,6 @@ Aggregate quality indicators across the entire image:
 import numpy as np
 from typing import Dict, Any, List
 
-import config
-
 
 class QualityAnalyzer:
     """Compute image-level quality metrics from measurements + classification."""

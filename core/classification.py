@@ -30,7 +30,7 @@ class GrainClassifier:
             # Create a copy so we don't mutate the global config
             self.t = self.t.copy()
             self.t["broken_max_length_ratio"] = broken_threshold
-            
+
         self.ppm = pixels_per_mm
         self.use_mm = self.ppm and self.ppm > 0
 

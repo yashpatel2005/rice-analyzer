@@ -22,7 +22,7 @@ grains into fragments.
 
 import cv2
 import numpy as np
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 
 import config
 
@@ -56,10 +56,10 @@ class Preprocessor:
     def enhance_contrast(self, image: np.ndarray) -> np.ndarray:
         """CLAHE contrast enhancement on the L channel of LAB."""
         lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
+        l_channel, a, b = cv2.split(lab)
         clahe = cv2.createCLAHE(clipLimit=self.clahe_clip, tileGridSize=self.clahe_grid)
-        l = clahe.apply(l)
-        lab = cv2.merge([l, a, b])
+        l_channel = clahe.apply(l_channel)
+        lab = cv2.merge([l_channel, a, b])
         return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
     def normalize_background(

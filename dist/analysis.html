@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis — Rice Analyzer</title>
+    <meta name="description" content="Rice Grain Morphometric Analysis System — AI-powered grain measurement, classification and grading.">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- noUiSlider for dual-handle range sliders -->
+    <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
+    <!-- Custom styles -->
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="bi bi-graph-up-arrow"></i>
+                <span>Rice Analyzer</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item ">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/camera" class="nav-item ">
+                <i class="bi bi-camera-video"></i>
+                <span>Camera</span>
+            </a>
+            <a href="/analysis" class="nav-item active">
+                <i class="bi bi-search"></i>
+                <span>Analysis</span>
+            </a>
+            <a href="/reports" class="nav-item ">
+                <i class="bi bi-file-earmark-bar-graph"></i>
+                <span>Reports</span>
+            </a>
+            <a href="/dashboard" class="nav-item ">
+                <i class="bi bi-bar-chart-line"></i>
+                <span>Power BI Dashboard</span>
+            </a>
+            <a href="/settings" class="nav-item ">
+                <i class="bi bi-gear"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="calibration-status" id="calibrationStatus">
+                <i class="bi bi-info-circle"></i>
+                <span>Checking calibration...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-content" id="mainContent">
+        <div class="topbar">
+            <button class="btn btn-sm btn-outline-light sidebar-toggle-mobile" id="sidebarToggleMobile">
+                <i class="bi bi-list"></i>
+            </button>
+            <h1 class="page-title">Analysis</h1>
+            <div class="topbar-actions">
+                <span class="badge bg-success" id="systemStatus" style="font-size:0.78rem; padding: 5px 10px; border-radius:20px;">
+                    <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> System Ready
+                </span>
+            </div>
+        </div>
+
+        <div class="content-wrapper">
+            
+<div class="container">
+    <h1 class="page-title">🔬 Analysis</h1>
+    <p class="page-subtitle">Upload or capture an image and run the full 10-phase morphometric analysis pipeline</p>
+
+    <!-- Upload Section -->
+    <div class="card" id="upload-section">
+        <div class="card-header">
+            <div class="card-title">📤 Image Input</div>
+        </div>
+        <div class="grid grid-2">
+            <div>
+                <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">
+                        <strong>Click to upload</strong> or drag & drop<br>
+                        <span class="font-sm">JPG, PNG, BMP, TIFF</span>
+                    </div>
+                    <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+            <div>
+                <div class="image-preview" id="input-preview">
+                    <div class="image-preview-empty">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🖼️</div>
+                        <p>No image selected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="grid grid-3 mt-2">
+            <div class="form-group">
+                <label>Watershed Segmentation</label>
+                <select class="form-control" id="use-watershed">
+                    <option value="true" selected>Enabled (for touching grains)</option>
+                    <option value="false">Disabled</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Pixels per mm (0 = use calibration)</label>
+                <input type="number" class="form-control" id="ppm-input" value="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <button class="btn btn-primary btn-lg btn-block" onclick="runAnalysis()">🚀 Run Analysis</button>
+            </div>
+        </div>
+
+        <!-- Advanced Settings Panel -->
+        <details class="advanced-settings-panel" style="margin-top: 1.5rem; background: rgba(9, 18, 40, 0.4); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <summary style="cursor: pointer; font-weight: 600; color: #6b8cbe; user-select: none;">
+                ⚙️ Advanced Settings
+            </summary>
+            <div class="grid grid-3 mt-2" style="margin-top: 1rem;">
+                <div class="form-group">
+                    <label>Contrast Boost (B&W High Contrast)</label>
+                    <select class="form-control" id="contrast-boost">
+                        <option value="true" selected>Enabled (Recommended)</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Broken Grain Threshold (Length Ratio)</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="broken-threshold" min="0.5" max="0.95" step="0.05" value="0.75" 
+                               oninput="document.getElementById('bt-val').innerText = this.value" style="flex: 1;">
+                        <span id="bt-val" style="min-width: 30px;">0.75</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Segmentation Block Size</label>
+                    <input type="number" class="form-control" id="block-size" value="121" step="2" min="11">
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <!-- Results Section (hidden until analysis runs) -->
+    <div id="results-section" class="hidden">
+        <!-- Summary Stats -->
+        <div class="grid grid-4 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon">🌾</div>
+                <div class="stat-value" id="r-grains">—</div>
+                <div class="stat-label">Grains Detected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-value" id="r-time">—</div>
+                <div class="stat-label">Processing Time (s)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📏</div>
+                <div class="stat-value" id="r-calibration">—</div>
+                <div class="stat-label">Calibration</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏆</div>
+                <div class="stat-value" id="r-grade">—</div>
+                <div class="stat-label">Final Grade</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('tab-annotated')">Annotated Image</div>
+            <div class="tab" onclick="switchTab('tab-measurements')">Measurements</div>
+            <div class="tab" onclick="switchTab('tab-statistics')">Statistics</div>
+            <div class="tab" onclick="switchTab('tab-classification')">Classification</div>
+            <div class="tab" onclick="switchTab('tab-quality')">Quality</div>
+            <div class="tab" onclick="switchTab('tab-grading')">Grading</div>
+            <div class="tab" onclick="switchTab('tab-plots')">Plots</div>
+            <div class="tab" onclick="switchTab('tab-preprocessing')">Preprocessing</div>
+            <div class="tab" onclick="switchTab('tab-downloads')">Downloads</div>
+        </div>
+
+        <!-- Tab: Annotated Image -->
+        <div class="tab-content active" id="tab-annotated">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🖼️ Annotated Image — Every Grain Labelled & Measured</div>
+                </div>
+                <div class="image-preview" id="annotated-preview"></div>
+                <div class="mt-2">
+                    <h4>Colour Legend</h4>
+                    <div class="grid grid-4 mt-1">
+                        <span class="badge badge-success">🟢 Whole Grain</span>
+                        <span class="badge badge-danger">🔴 Broken Grain</span>
+                        <span class="badge badge-info">🔵 Long Grain</span>
+                        <span class="badge badge-warning">🟠 Medium Grain</span>
+                        <span class="badge badge-secondary">🟡 Short Grain</span>
+                        <span class="badge" style="background:rgba(255,0,255,0.2);color:#ce93d8">🟣 Oversized</span>
+                        <span class="badge" style="background:rgba(128,0,128,0.2);color:#ce93d8">🟣 Undersized</span>
+                        <span class="badge" style="background:rgba(0,0,128,0.2);color:#9fa8da">🔵 Abnormal</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Measurements -->
+        <div class="tab-content" id="tab-measurements">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📋 Per-Grain Measurements</div>
+                    <input type="text" class="form-control" id="measurement-search" placeholder="Search..." style="width: 200px;" oninput="filterMeasurements()">
+                </div>
+                <div class="table-container">
+                    <table id="measurements-table"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Statistics -->
+        <div class="tab-content" id="tab-statistics">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📊 Statistical Analysis</div>
+                </div>
+                <div id="statistics-content"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Classification -->
+        <div class="tab-content" id="tab-classification">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🏷️ Grain Classification</div>
+                </div>
+                <div class="grid grid-4 mb-3" id="classification-cards"></div>
+                <div class="table-container">
+                    <table id="classification-table"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Quality -->
+        <div class="tab-content" id="tab-quality">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📈 Quality Metrics</div>
+                </div>
+                <div class="grid grid-2">
+                    <div id="quality-metrics"></div>
+                    <div>
+                        <h4 class="mb-2">Quality Summary Table</h4>
+                        <div class="image-preview" id="quality-table-preview"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Grading -->
+        <div class="tab-content" id="tab-grading">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🏆 Final Verdict</div>
+                </div>
+                <div id="grading-content"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Plots -->
+        <div class="tab-content" id="tab-plots">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📉 Statistical Plots</div>
+                </div>
+                <div id="plots-content"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Preprocessing -->
+        <div class="tab-content" id="tab-preprocessing">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🔧 Preprocessing Steps</div>
+                </div>
+                <div class="grid grid-3" id="preprocessing-steps"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Downloads -->
+        <div class="tab-content" id="tab-downloads">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">💾 Download Reports</div>
+                </div>
+                <div id="downloads-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let analysisResult = null;
+let selectedFile = null;
+
+// File upload handling
+const uploadZone = document.getElementById('upload-zone');
+
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+        selectedFile = e.dataTransfer.files[0];
+        previewFile(selectedFile);
+    }
+});
+
+function handleFileSelect(event) {
+    if (event.target.files.length) {
+        selectedFile = event.target.files[0];
+        previewFile(selectedFile);
+    }
+}
+
+function previewFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('input-preview').innerHTML = `<img src="${e.target.result}" alt="Selected Image">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Check for captured image from camera page
+(async function() {
+    const params = new URLSearchParams(window.location.search);
+    const imgPath = params.get('img');
+    if (imgPath) {
+        // Show the captured image
+        document.getElementById('input-preview').innerHTML = `<img src="/api/preview/images/${imgPath.split('/').pop()}" alt="Captured Image" onerror="this.parentElement.innerHTML='<p class=\\'text-muted\\'>Captured image ready for analysis</p>'">`;
+        // Store the path for analysis
+        selectedFile = null;
+        window.capturedImagePath = imgPath;
+    }
+})();
+
+// Run analysis
+async function runAnalysis() {
+    const useWatershed = document.getElementById('use-watershed').value;
+    const ppm = document.getElementById('ppm-input').value;
+    const contrastBoost = document.getElementById('contrast-boost').value;
+    const brokenThreshold = document.getElementById('broken-threshold').value;
+    const blockSize = document.getElementById('block-size').value;
+
+    const formData = new FormData();
+    if (selectedFile) {
+        formData.append('image', selectedFile);
+    } else if (window.capturedImagePath) {
+        formData.append('image_path', window.capturedImagePath);
+    } else {
+        showToast('Please select or capture an image first', 'warning');
+        return;
+    }
+
+    formData.append('use_watershed', useWatershed);
+    formData.append('pixels_per_mm', ppm);
+    formData.append('contrast_boost', contrastBoost);
+    formData.append('broken_threshold', brokenThreshold);
+    formData.append('block_size', blockSize);
+
+    showSpinner('Running 10-phase analysis pipeline...');
+
+    try {
+        const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.success) {
+            analysisResult = data;
+            displayResults(data);
+            showToast(`Analysis complete: ${data.num_grains} grains detected in ${data.elapsed_seconds}s`, 'success');
+        } else {
+            showToast('Analysis failed: ' + data.error, 'error');
+        }
+    } catch (e) {
+        showToast('Analysis failed: ' + e.message, 'error');
+    }
+    hideSpinner();
+}
+
+function displayResults(data) {
+    // Show results section
+    document.getElementById('results-section').classList.remove('hidden');
+    document.getElementById('upload-section').scrollIntoView({ behavior: 'smooth' });
+
+    // Summary stats
+    document.getElementById('r-grains').textContent = data.num_grains;
+    document.getElementById('r-time').textContent = data.elapsed_seconds;
+    document.getElementById('r-calibration').textContent = data.metadata.calibrated ? `${data.metadata.pixels_per_mm.toFixed(2)} px/mm` : 'Uncalibrated';
+    const grade = data.grading.grade;
+    document.getElementById('r-grade').innerHTML = `<span class="badge grade-${grade.toLowerCase().replace(/\s+/g,'-')}">${grade}</span>`;
+
+    // Annotated image
+    document.getElementById('annotated-preview').innerHTML = `<img src="${data.annotated_preview}" alt="Annotated Image">`;
+
+    // Measurements table
+    renderMeasurements(data.measurements);
+
+    // Statistics
+    renderStatistics(data.statistics);
+
+    // Classification
+    renderClassification(data.classifications, data.category_counts);
+
+    // Quality
+    renderQuality(data.quality, data.quality_table_preview);
+
+    // Grading
+    renderGrading(data.grading);
+
+    // Plots
+    renderPlots(data.plot_previews);
+
+    // Preprocessing steps
+    renderPreprocessing(data.step_previews);
+
+    // Downloads
+    renderDownloads(data.files);
+}
+
+function renderMeasurements(measurements) {
+    if (!measurements.length) return;
+    const keys = Object.keys(measurements[0]).filter(k => !Array.isArray(measurements[0][k]));
+    let html = '<thead><tr><th>#</th>';
+    // Show key columns
+    const showCols = ['area_px', 'perimeter_px', 'length_px', 'width_px', 'aspect_ratio', 'circularity', 'solidity', 'eccentricity', 'orientation_angle'];
+    if (measurements[0].length_mm != null) showCols.unshift('length_mm', 'width_mm', 'area_mm2');
+    for (const col of showCols) {
+        html += `<th>${col}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+    measurements.forEach(m => {
+        html += `<tr><td>${m.label}</td>`;
+        for (const col of showCols) {
+            const v = m[col];
+            html += `<td>${v != null ? (typeof v === 'number' ? v.toFixed(2) : v) : '—'}</td>`;
+        }
+        html += '</tr>';
+    });
+    html += '</tbody>';
+    document.getElementById('measurements-table').innerHTML = html;
+}
+
+function filterMeasurements() {
+    const query = document.getElementById('measurement-search').value.toLowerCase();
+    const rows = document.querySelectorAll('#measurements-table tbody tr');
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+}
+
+function renderStatistics(stats) {
+    if (!stats || Object.keys(stats).length === 0) {
+        document.getElementById('statistics-content').innerHTML = '<p class="text-muted">No grains detected, so no statistics are available.</p>';
+        return;
+    }
+    if (stats.error) {
+        document.getElementById('statistics-content').innerHTML = `<p class="text-danger">${stats.error}</p>`;
+        return;
+    }
+    let html = `<div class="mb-2"><strong>Total Grains:</strong> ${stats.total_grains} | <strong>Calibrated:</strong> ${stats.calibrated ? 'Yes' : 'No'}</div>`;
+    html += '<div class="table-container"><table><thead><tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std Dev</th><th>Min</th><th>Max</th><th>CV (%)</th><th>Q1</th><th>Q3</th><th>IQR</th><th>Skew</th><th>Kurt</th></tr></thead><tbody>';
+    for (const [metric, s] of Object.entries(stats.per_metric)) {
+        html += `<tr><td>${metric}</td><td>${s.mean?.toFixed(2)||'—'}</td><td>${s.median?.toFixed(2)||'—'}</td><td>${s.std_dev?.toFixed(2)||'—'}</td><td>${s.min?.toFixed(2)||'—'}</td><td>${s.max?.toFixed(2)||'—'}</td><td>${s.cv?.toFixed(2)||'—'}</td><td>${s.q1?.toFixed(2)||'—'}</td><td>${s.q3?.toFixed(2)||'—'}</td><td>${s.iqr?.toFixed(2)||'—'}</td><td>${s.skewness?.toFixed(2)||'—'}</td><td>${s.kurtosis?.toFixed(2)||'—'}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+
+    // Outlier info
+    html += '<div class="mt-2"><h4>Outlier Detection</h4><div class="table-container"><table><thead><tr><th>Metric</th><th>IQR Outliers</th><th>Z-Score Outliers</th><th>IQR Lower</th><th>IQR Upper</th></tr></thead><tbody>';
+    for (const [metric, s] of Object.entries(stats.per_metric)) {
+        if (s.outliers) {
+            html += `<tr><td>${metric}</td><td>${s.outliers.iqr_outliers?.length||0}</td><td>${s.outliers.zscore_outliers?.length||0}</td><td>${s.outliers.iqr_lower?.toFixed(2)||'—'}</td><td>${s.outliers.iqr_upper?.toFixed(2)||'—'}</td></tr>`;
+        }
+    }
+    html += '</tbody></table></div></div>';
+
+    document.getElementById('statistics-content').innerHTML = html;
+}
+
+function renderClassification(classifications, counts) {
+    if (!classifications || classifications.length === 0) {
+        document.getElementById('classification-cards').innerHTML = '<p class="text-muted" style="padding:1rem;">No grains detected.</p>';
+        document.getElementById('classification-table').innerHTML = '';
+        return;
+    }
+    // Cards
+    const colors = {
+        whole_grain: 'badge-success', broken_grain: 'badge-danger',
+        long_grain: 'badge-info', medium_grain: 'badge-warning',
+        short_grain: 'badge-secondary', oversized_grain: 'badge-primary',
+        undersized_grain: 'badge-secondary', abnormal_grain: 'badge-danger',
+    };
+    let cardsHtml = '';
+    for (const [cat, count] of Object.entries(counts)) {
+        cardsHtml += `
+            <div class="stat-card">
+                <div class="stat-value">${count}</div>
+                <div class="stat-label"><span class="badge ${colors[cat]||'badge-secondary'}">${cat.replace(/_/g,' ')}</span></div>
+            </div>`;
+    }
+    document.getElementById('classification-cards').innerHTML = cardsHtml;
+
+    // Table
+    let html = '<thead><tr><th>Grain #</th><th>Primary Category</th><th>All Categories</th></tr></thead><tbody>';
+    classifications.forEach(c => {
+        html += `<tr><td>${c.label}</td><td><span class="badge ${colors[c.primary_category]||'badge-secondary'}">${c.primary_category.replace(/_/g,' ')}</span></td><td>${c.categories.map(cat=>`<span class="badge ${colors[cat]||'badge-secondary'}" style="margin-right:4px">${cat.replace(/_/g,' ')}</span>`).join('')}</td></tr>`;
+    });
+    html += '</tbody>';
+    document.getElementById('classification-table').innerHTML = html;
+}
+
+function renderQuality(quality, tablePreview) {
+    if (!quality || Object.keys(quality).length === 0) {
+        document.getElementById('quality-content').innerHTML = '<p class="text-muted">No grains detected, so no quality metrics are available.</p>';
+        return;
+    }
+    let html = '<div class="property-grid">';
+    const items = [
+        ['Total Grains', quality.total_grains],
+        ['Broken %', quality.broken_pct?.toFixed(2) + '%'],
+        ['Abnormal %', quality.abnormal_pct?.toFixed(2) + '%'],
+        ['Uniformity Index', quality.uniformity_index?.toFixed(2) + '%'],
+        ['CV of Length', quality.cv_length?.toFixed(2) + '%'],
+        ['CV of Area', quality.cv_area?.toFixed(2) + '%'],
+        ['Avg Aspect Ratio', quality.average_aspect_ratio?.toFixed(3)],
+        ['Shape Consistency', quality.shape_consistency?.toFixed(2) + '%'],
+        ['Grain Density', quality.grain_density?.toFixed(4)],
+        ['Packing Ratio', quality.packing_ratio?.toFixed(4)],
+        ['Avg Inter-Grain Spacing (px)', quality.avg_inter_grain_spacing_px?.toFixed(1)],
+        ['Orientation Mean', quality.orientation?.mean?.toFixed(2) + '°'],
+        ['Orientation Std', quality.orientation?.std?.toFixed(2) + '°'],
+        ['Orientation Circular Mean', quality.orientation?.circular_mean?.toFixed(2) + '°'],
+    ];
+    for (const [label, val] of items) {
+        html += `<div class="property-item"><div class="prop-key">${label}</div><div class="prop-val">${val}</div></div>`;
+    }
+    html += '</div>';
+
+    // Size distribution
+    html += '<div class="mt-2"><h4>Size Distribution</h4><div class="property-grid">';
+    const sd = quality.size_distribution || {};
+    for (const [k, v] of Object.entries(sd)) {
+        html += `<div class="property-item"><div class="prop-key">${k}</div><div class="prop-val">${typeof v === 'number' ? v.toFixed(2) : v}</div></div>`;
+    }
+    html += '</div></div>';
+
+    // Size category counts
+    html += '<div class="mt-2"><h4>Size Category Counts</h4>';
+    for (const [k, v] of Object.entries(quality.size_category_counts || {})) {
+        html += `<span class="badge badge-info" style="margin-right:8px">${k.replace(/_/g,' ')}: ${v}</span>`;
+    }
+    html += '</div>';
+
+    document.getElementById('quality-metrics').innerHTML = html;
+    document.getElementById('quality-table-preview').innerHTML = `<img src="${tablePreview}" alt="Quality Table">`;
+}
+
+function renderGrading(grading) {
+    const gradeKey = grading.grade_key || 'reject';
+    const gradeClass = gradeKey === 'premium' ? 'grade-premium' : gradeKey === 'grade_a' ? 'grade-a' : gradeKey === 'grade_b' ? 'grade-b' : gradeKey === 'grade_c' ? 'grade-c' : 'grade-reject';
+    let html = `
+        <div class="grade-display">
+            <div class="grade-badge ${gradeClass}">${grading.grade}</div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div class="card-title">📝 Explanation</div></div>
+            <pre style="white-space: pre-wrap; color: var(--text-light); font-family: inherit; line-height: 1.6;">${grading.explanation}</pre>
+        </div>
+        <div class="card">
+            <div class="card-header"><div class="card-title">✅ Criteria Evaluation</div></div>
+            <div class="table-container"><table><thead><tr><th>Criterion</th><th>Value</th><th>Operator</th><th>Threshold</th><th>Result</th></tr></thead><tbody>`;
+    for (const c of (grading.criteria_results || [])) {
+        html += `<tr><td>${c.criterion}</td><td>${c.value?.toFixed(2)}</td><td>${c.operator}</td><td>${c.threshold?.toFixed(2)}</td><td>${c.passed ? '✅ PASS' : '❌ FAIL'}</td></tr>`;
+    }
+    html += '</tbody></table></div></div>';
+
+    // All grade evaluations
+    html += '<div class="card"><div class="card-header"><div class="card-title">📋 All Grade Evaluations</div></div><div class="table-container"><table><thead><tr><th>Grade</th><th>All Criteria Passed</th><th>Details</th></tr></thead><tbody>';
+    for (const ev of (grading.all_evaluations || [])) {
+        html += `<tr><td><strong>${ev.label}</strong></td><td>${ev.all_passed ? '✅' : '❌'}</td><td>${ev.checks.map(c=>`${c.criterion}: ${c.passed?'✅':'❌'}`).join(', ')}</td></tr>`;
+    }
+    html += '</tbody></table></div></div>';
+
+    document.getElementById('grading-content').innerHTML = html;
+}
+
+function renderPlots(plots) {
+    let html = '<div class="grid grid-2">';
+    for (const [name, src] of Object.entries(plots)) {
+        html += `<div class="card"><div class="card-header"><div class="card-title">${name.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase())}</div></div><div class="image-preview"><img src="${src}" alt="${name}"></div></div>`;
+    }
+    html += '</div>';
+    document.getElementById('plots-content').innerHTML = html;
+}
+
+function renderPreprocessing(steps) {
+    let html = '';
+    for (const [name, src] of Object.entries(steps)) {
+        html += `<div class="card"><div class="card-header"><div class="card-title">${name.charAt(0).toUpperCase()+name.slice(1)}</div></div><div class="image-preview"><img src="${src}" alt="${name}"></div></div>`;
+    }
+    document.getElementById('preprocessing-steps').innerHTML = html;
+}
+
+function renderDownloads(files) {
+    let html = '<div class="grid grid-3">';
+    const items = [
+        ['csv', files.csv, 'CSV Measurements', '📑'],
+        ['csv', files.stats_csv, 'CSV Statistics', '📊'],
+        ['excel', files.excel, 'Excel Report', '📗'],
+        ['json', files.json, 'JSON Report', '🔧'],
+        ['images', files.annotated_image, 'Annotated Image', '🖼️'],
+        ['plots', files.quality_table, 'Quality Table', '📈'],
+    ];
+    for (const [cat, fname, label, icon] of items) {
+        if (fname) {
+            html += `<a href="/api/download/${cat}/${fname}" class="card" style="text-decoration:none; text-align:center;">
+                <div style="font-size: 2rem;">${icon}</div>
+                <div class="text-bright font-bold mt-1">${label}</div>
+                <div class="text-muted font-sm">${fname}</div>
+            </a>`;
+        }
+    }
+    // Plot downloads
+    for (const [name, fname] of Object.entries(files.plots || {})) {
+        html += `<a href="/api/download/plots/${fname}" class="card" style="text-decoration:none; text-align:center;">
+            <div style="font-size: 2rem;">📉</div>
+            <div class="text-bright font-bold mt-1">${name.replace(/_/g,' ')}</div>
+            <div class="text-muted font-sm">${fname}</div>
+        </a>`;
+    }
+    html += '</div>';
+    document.getElementById('downloads-content').innerHTML = html;
+}
+
+// Tab switching
+function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+</script>
+
+        </div>
+    </div>
+
+    <!-- Sidebar overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loadingText">Processing...</p>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Image fullscreen modal -->
+    <div class="img-modal-backdrop" id="imgModalBackdrop" onclick="closeImgModal(event)">
+        <button class="img-modal-close" onclick="closeImgModal(null, true)">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <img id="imgModalImg" src="" alt="Preview">
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+    <script src="/static/js/api-config.js"></script>
+    <script src="/static/js/main.js"></script>
+    
+</body>
+</html>

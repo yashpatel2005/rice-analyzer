@@ -14,9 +14,7 @@ Comprehensive statistical analysis across all measured grains:
 import numpy as np
 import pandas as pd
 from scipy import stats
-from typing import Dict, Any, List, Optional
-
-import config
+from typing import Dict, Any, List
 
 
 class StatisticalAnalyzer:
