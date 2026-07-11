@@ -11,10 +11,14 @@ const API_BASE = window.API_BASE_URL || '';
 // Helper for API calls
 async function apiFetch(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
+    const isFormData = options.body instanceof FormData;
+    const headers = isFormData ? {} : {
+        'Content-Type': 'application/json',
+    };
     const response = await fetch(url, {
         ...options,
         headers: {
-            'Content-Type': 'application/json',
+            ...headers,
             ...options.headers
         }
     });

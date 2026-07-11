@@ -136,7 +136,7 @@
 (async function() {
     // Camera status
     try {
-        const res = await fetch('/api/camera/info');
+        const res = await fetch(API_BASE + '/api/camera/info');
         const data = await res.json();
         const el = document.getElementById('stat-camera');
         if (data.success) {
@@ -165,7 +165,7 @@
 
     // Report count
     try {
-        const res = await fetch('/api/reports');
+        const res = await fetch(API_BASE + '/api/reports');
         const data = await res.json();
         if (data.success) {
             const total = Object.values(data.reports).reduce((s, a) => s + a.length, 0);
@@ -178,7 +178,7 @@
 
     // Latest analysis
     try {
-        const res = await fetch('/api/reports/latest');
+        const res = await fetch(API_BASE + '/api/reports/latest');
         const data = await res.json();
         if (data.success) {
             document.getElementById('stat-analyses').textContent = '1+';

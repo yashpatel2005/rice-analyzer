@@ -87,7 +87,7 @@
 // Load latest analysis for the preview panel
 async function loadLatestPreview() {
     try {
-        const res = await fetch('/api/reports/latest');
+        const res = await fetch(API_BASE + '/api/reports/latest');
         const data = await res.json();
         if (!data.success) return;
 
@@ -127,7 +127,7 @@ async function loadReports() {
         <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 1rem;"></div>Loading...</div>`;
 
     try {
-        const res = await fetch('/api/reports');
+        const res = await fetch(API_BASE + '/api/reports');
         const data = await res.json();
 
         if (!data.success) {
@@ -160,8 +160,8 @@ async function loadReports() {
                 // Card grid with hover preview
                 html += `<div class="report-image-grid">`;
                 for (const f of files) {
-                    const previewUrl = `/api/preview/${info.path}/${encodeURIComponent(f.name)}`;
-                    const downloadUrl = `/api/download/${info.path}/${encodeURIComponent(f.name)}`;
+                    const previewUrl = `${API_BASE}/api/preview/${info.path}/${encodeURIComponent(f.name)}`;
+                    const downloadUrl = `${API_BASE}/api/download/${info.path}/${encodeURIComponent(f.name)}`;
                     const dateStr = new Date(f.modified).toLocaleDateString();
                     html += `
                     <div class="report-img-card"
@@ -205,7 +205,7 @@ async function loadReports() {
                         <td><span class="badge badge-secondary">${sizeStr}</span></td>
                         <td style="color:var(--text-muted);font-size:0.82rem;">${dateStr}</td>
                         <td>
-                            <a href="/api/download/${info.path}/${encodeURIComponent(f.name)}"
+                            <a href="${API_BASE}/api/download/${info.path}/${encodeURIComponent(f.name)}"
                                class="btn btn-primary btn-sm">
                                 <i class="bi bi-download"></i> Download
                             </a>

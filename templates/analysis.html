@@ -309,7 +309,7 @@ async function runAnalysis() {
     showSpinner('Running 10-phase analysis pipeline...');
 
     try {
-        const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+        const res = await fetch(API_BASE + '/api/analyze', { method: 'POST', body: formData });
         const data = await res.json();
 
         if (data.success) {

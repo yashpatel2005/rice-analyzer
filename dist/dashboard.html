@@ -362,7 +362,7 @@ const axisDefaults = (xLabel = '', yLabel = '') => ({
 async function loadDashboardData() {
     showSpinner('Loading dashboard data...');
     try {
-        const res = await fetch('/api/dashboard/data');
+        const res = await fetch(API_BASE + '/api/dashboard/data');
         const data = await res.json();
 
         if (!data.success) {

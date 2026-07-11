@@ -6,47 +6,57 @@
 {% block content %}
 <div class="container">
     <h1 class="page-title">📷 Camera Control</h1>
-    <p class="page-subtitle">Auto-detect camera properties, live preview, capture & calibration</p>
+    <p class="page-subtitle">Use your device's camera for live preview, capture & calibration</p>
 
     <div class="grid grid-2">
         <!-- Live Preview -->
         <div class="card">
             <div class="card-header">
                 <div class="card-title">🎥 Live Preview</div>
-                <button class="btn btn-secondary btn-sm" onclick="refreshPreview()">🔄 Refresh</button>
+                <div>
+                    <button class="btn btn-secondary btn-sm" id="btn-start-cam" onclick="startCamera()">▶️ Start Camera</button>
+                    <button class="btn btn-secondary btn-sm hidden" id="btn-stop-cam" onclick="stopCamera()">⏹️ Stop</button>
+                </div>
             </div>
             <div class="image-preview" id="preview-container">
-                <div class="image-preview-empty">
+                <video id="camera-video" autoplay playsinline style="width:100%;border-radius:8px;display:none;"></video>
+                <canvas id="capture-canvas" style="display:none;"></canvas>
+                <img id="captured-img" style="width:100%;border-radius:8px;display:none;" alt="Captured">
+                <div class="image-preview-empty" id="camera-placeholder">
                     <div style="font-size: 3rem; margin-bottom: 1rem;">📷</div>
-                    <p>Click "Refresh" to view live camera feed</p>
+                    <p>Click "Start Camera" to open your device camera</p>
                 </div>
             </div>
             <div class="mt-2 text-center">
-                <button class="btn btn-primary" onclick="captureFrame()">📸 Capture Frame</button>
+                <button class="btn btn-primary" onclick="captureFrame()" id="btn-capture" disabled>📸 Capture Frame</button>
                 <button class="btn btn-secondary" onclick="analyzeCaptured()" id="analyze-captured-btn" disabled>🔬 Analyze Captured</button>
             </div>
             <div id="capture-info" class="mt-2 hidden"></div>
+            <div class="form-group mt-2">
+                <label>Camera Source</label>
+                <select class="form-control" id="camera-select" onchange="switchCamera()">
+                    <option value="">Loading cameras...</option>
+                </select>
+            </div>
         </div>
 
         <!-- Camera Properties -->
         <div>
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">📋 Auto-Detected Camera Properties</div>
-                    <button class="btn btn-secondary btn-sm" onclick="loadCameraInfo()">🔄 Re-detect</button>
+                    <div class="card-title">📋 Device Camera Properties</div>
                 </div>
                 <div id="camera-properties">
-                    <p class="text-muted text-center">Click "Re-detect" to scan camera properties</p>
+                    <p class="text-muted text-center">Start the camera to see properties</p>
                 </div>
             </div>
 
-            <!-- Optimal Config -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">⚙️ Optimal Capture Configuration</div>
+                    <div class="card-title">⚙️ Calibration Status</div>
                 </div>
                 <div id="optimal-config">
-                    <p class="text-muted">Load camera info to see recommendations</p>
+                    <p class="text-muted">Checking server calibration...</p>
                 </div>
             </div>
         </div>
@@ -58,7 +68,6 @@
             <div class="card-title">📏 Calibration</div>
         </div>
         <div class="grid grid-3">
-            <!-- Checkerboard -->
             <div>
                 <h4 class="mb-1">Checkerboard Calibration</h4>
                 <p class="text-muted font-sm mb-2">Upload checkerboard images to calibrate pixels-per-mm</p>
@@ -72,8 +81,6 @@
                 </div>
                 <button class="btn btn-primary btn-block" onclick="calibrateCheckerboard()">Calibrate</button>
             </div>
-
-            <!-- Known Object -->
             <div>
                 <h4 class="mb-1">Known Object Calibration</h4>
                 <p class="text-muted font-sm mb-2">Upload an image with an object of known length</p>
@@ -87,8 +94,6 @@
                 </div>
                 <button class="btn btn-primary btn-block" onclick="calibrateKnownObject()">Calibrate</button>
             </div>
-
-            <!-- Manual -->
             <div>
                 <h4 class="mb-1">Manual Calibration</h4>
                 <p class="text-muted font-sm mb-2">Enter pixels-per-mm directly</p>
@@ -104,103 +109,153 @@
 </div>
 
 <script>
-let capturedImagePath = null;
+let cameraStream = null;
+let capturedBlob = null;
 
-async function loadCameraInfo() {
-    const res = await fetch('/api/camera/info');
-    const data = await res.json();
-    const propsDiv = document.getElementById('camera-properties');
-    const configDiv = document.getElementById('optimal-config');
-
-    if (!data.success) {
-        propsDiv.innerHTML = `<p class="text-danger">⚠️ ${data.error}</p>`;
-        configDiv.innerHTML = '';
-        return;
-    }
-
-    // Properties
-    let html = '<div class="property-grid">';
-    for (const [key, val] of Object.entries(data.properties)) {
-        html += `
-            <div class="property-item">
-                <div class="prop-key">${key}</div>
-                <div class="prop-val">${typeof val === 'number' ? val.toFixed(2) : val}</div>
-            </div>`;
-    }
-    html += '</div>';
-    propsDiv.innerHTML = html;
-
-    // Calibration status
-    if (data.is_calibrated) {
-        propsDiv.innerHTML += `
-            <div class="mt-2 p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px; border: 1px solid rgba(76,175,80,0.3);">
-                ✅ <strong>Calibrated:</strong> ${data.pixels_per_mm.toFixed(4)} px/mm
-                <button class="btn btn-secondary btn-sm" style="margin-left: 1rem;" onclick="useCalibration()">Use in Analysis</button>
-            </div>`;
-    } else {
-        propsDiv.innerHTML += `
-            <div class="mt-2 p-2" style="background: rgba(255,152,0,0.1); border-radius: 8px; border: 1px solid rgba(255,152,0,0.3);">
-                ⚠️ <strong>Not Calibrated</strong> — Measurements will be in pixels only
-            </div>`;
-    }
-
-    // Optimal config
-    let configHtml = '<div class="property-grid">';
-    for (const [key, val] of Object.entries(data.optimal_config)) {
-        configHtml += `
-            <div class="property-item">
-                <div class="prop-key">${key.replace(/_/g, ' ')}</div>
-                <div class="prop-val" style="font-size: 0.95rem;">${val}</div>
-            </div>`;
-    }
-    configHtml += '</div>';
-    configDiv.innerHTML = configHtml;
-}
-
-async function refreshPreview() {
-    const container = document.getElementById('preview-container');
-    container.innerHTML = '<div class="image-preview-empty"><div class="spinner"></div><p>Loading preview...</p></div>';
+async function enumerateCameras() {
     try {
-        const res = await fetch('/api/camera/preview');
-        const data = await res.json();
-        if (data.success) {
-            container.innerHTML = `<img src="${data.image}" alt="Camera Preview">`;
-        } else {
-            container.innerHTML = `<div class="image-preview-empty"><p class="text-danger">⚠️ ${data.error}</p></div>`;
-        }
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        tempStream.getTracks().forEach(t => t.stop());
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        const select = document.getElementById('camera-select');
+        select.innerHTML = '';
+        videoDevices.forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || `Camera ${i + 1}`;
+            select.appendChild(opt);
+        });
+        const rear = videoDevices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
+        if (rear) select.value = rear.deviceId;
     } catch (e) {
-        container.innerHTML = `<div class="image-preview-empty"><p class="text-danger">⚠️ Failed to get preview</p></div>`;
+        console.warn('Could not enumerate cameras:', e);
     }
 }
 
-async function captureFrame() {
-    showSpinner('Capturing frame...');
+async function startCamera() {
+    const select = document.getElementById('camera-select');
+    const constraints = {
+        video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            deviceId: select.value ? { exact: select.value } : undefined
+        }
+    };
     try {
-        const res = await fetch('/api/camera/capture', { method: 'POST' });
+        if (cameraStream) stopCamera();
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = document.getElementById('camera-video');
+        video.srcObject = cameraStream;
+        video.style.display = 'block';
+        document.getElementById('camera-placeholder').style.display = 'none';
+        document.getElementById('captured-img').style.display = 'none';
+        document.getElementById('btn-capture').disabled = false;
+        document.getElementById('btn-start-cam').classList.add('hidden');
+        document.getElementById('btn-stop-cam').classList.remove('hidden');
+        const track = cameraStream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        showCameraProperties(settings, track.label);
+        await enumerateCameras();
+        showToast('Camera started', 'success');
+    } catch (e) {
+        showToast('Camera access denied: ' + e.message, 'error');
+    }
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+    document.getElementById('camera-video').srcObject = null;
+    document.getElementById('camera-video').style.display = 'none';
+    document.getElementById('btn-capture').disabled = true;
+    document.getElementById('btn-start-cam').classList.remove('hidden');
+    document.getElementById('btn-stop-cam').classList.add('hidden');
+    if (!capturedBlob) document.getElementById('camera-placeholder').style.display = '';
+}
+
+async function switchCamera() { if (cameraStream) await startCamera(); }
+
+function captureFrame() {
+    const video = document.getElementById('camera-video');
+    const canvas = document.getElementById('capture-canvas');
+    if (!video.srcObject) { showToast('Start camera first', 'warning'); return; }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const img = document.getElementById('captured-img');
+    img.src = canvas.toDataURL('image/jpeg', 0.95);
+    img.style.display = 'block';
+    video.style.display = 'none';
+    canvas.toBlob(blob => {
+        capturedBlob = blob;
+        document.getElementById('analyze-captured-btn').disabled = false;
+        document.getElementById('capture-info').innerHTML = `
+            <div class="p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px;">
+                ✅ Captured: <strong>${canvas.width}×${canvas.height}</strong>
+                <button class="btn btn-secondary btn-sm" style="margin-left:1rem;" onclick="retakePhoto()">🔄 Retake</button>
+            </div>`;
+        document.getElementById('capture-info').classList.remove('hidden');
+    }, 'image/jpeg', 0.95);
+    showToast('Frame captured!', 'success');
+}
+
+function retakePhoto() {
+    capturedBlob = null;
+    document.getElementById('captured-img').style.display = 'none';
+    document.getElementById('camera-video').style.display = 'block';
+    document.getElementById('analyze-captured-btn').disabled = true;
+    document.getElementById('capture-info').classList.add('hidden');
+}
+
+async function analyzeCaptured() {
+    if (!capturedBlob) return;
+    showSpinner('Uploading & analyzing...');
+    try {
+        const formData = new FormData();
+        formData.append('image', capturedBlob, 'camera_capture.jpg');
+        const res = await fetch(API_BASE + '/api/analyze', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
-            document.getElementById('preview-container').innerHTML = `<img src="${data.image}" alt="Captured Frame">`;
-            capturedImagePath = data.metadata.filepath;
-            document.getElementById('analyze-captured-btn').disabled = false;
-            document.getElementById('capture-info').innerHTML = `
-                <div class="p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px;">
-                    ✅ Captured: <strong>${data.metadata.filename}</strong><br>
-                    Resolution: ${data.metadata.resolution} | Calibration: ${data.metadata.calibration_status}
-                </div>`;
-            document.getElementById('capture-info').classList.remove('hidden');
-            showToast('Frame captured successfully!', 'success');
+            sessionStorage.setItem('analysisResult', JSON.stringify(data));
+            window.location.href = '/analysis';
         } else {
-            showToast('Capture failed: ' + data.error, 'error');
+            showToast('Analysis failed: ' + data.error, 'error');
         }
-    } catch (e) {
-        showToast('Capture failed: ' + e.message, 'error');
-    }
+    } catch (e) { showToast('Analysis failed: ' + e.message, 'error'); }
     hideSpinner();
 }
 
-function analyzeCaptured() {
-    if (!capturedImagePath) return;
-    window.location.href = `/analysis?img=${encodeURIComponent(capturedImagePath)}`;
+function showCameraProperties(settings, label) {
+    const propsDiv = document.getElementById('camera-properties');
+    const props = {
+        'Camera': label || 'Unknown',
+        'Resolution': `${settings.width || '?'}×${settings.height || '?'}`,
+        'Frame Rate': settings.frameRate ? settings.frameRate.toFixed(1) + ' fps' : 'N/A',
+        'Facing Mode': settings.facingMode || 'N/A',
+    };
+    let html = '<div class="property-grid">';
+    for (const [key, val] of Object.entries(props)) {
+        html += `<div class="property-item"><div class="prop-key">${key}</div><div class="prop-val">${val}</div></div>`;
+    }
+    propsDiv.innerHTML = html + '</div>';
+}
+
+async function loadCalibrationStatus() {
+    try {
+        const res = await fetch(API_BASE + '/api/camera/calibration_status');
+        const data = await res.json();
+        const div = document.getElementById('optimal-config');
+        if (data.success && data.is_calibrated) {
+            div.innerHTML = `<div class="p-2" style="background:rgba(76,175,80,0.1);border-radius:8px;border:1px solid rgba(76,175,80,0.3);">✅ <strong>Calibrated:</strong> ${data.pixels_per_mm.toFixed(4)} px/mm</div>`;
+        } else {
+            div.innerHTML = `<div class="p-2" style="background:rgba(255,152,0,0.1);border-radius:8px;border:1px solid rgba(255,152,0,0.3);">⚠️ <strong>Not Calibrated</strong> — Measurements in pixels only</div>`;
+        }
+    } catch(e) {
+        document.getElementById('optimal-config').innerHTML = '<p class="text-muted">Could not reach server</p>';
+    }
 }
 
 async function calibrateCheckerboard() {
@@ -210,15 +265,11 @@ async function calibrateCheckerboard() {
     formData.append('method', 'checkerboard');
     formData.append('square_size_mm', document.getElementById('cb-square-size').value);
     for (const f of files) formData.append('images', f);
-
     showSpinner('Calibrating...');
     try {
-        const res = await fetch('/api/camera/calibrate', { method: 'POST', body: formData });
-        const data = await res.json();
-        showCalibrationResult(data);
-    } catch (e) {
-        showToast('Calibration failed: ' + e.message, 'error');
-    }
+        const res = await fetch(API_BASE + '/api/camera/calibrate', { method: 'POST', body: formData });
+        showCalibrationResult(await res.json());
+    } catch (e) { showToast('Calibration failed: ' + e.message, 'error'); }
     hideSpinner();
 }
 
@@ -229,61 +280,41 @@ async function calibrateKnownObject() {
     formData.append('method', 'known_object');
     formData.append('object_length_mm', document.getElementById('ko-length').value);
     formData.append('image', file);
-
     showSpinner('Calibrating...');
     try {
-        const res = await fetch('/api/camera/calibrate', { method: 'POST', body: formData });
-        const data = await res.json();
-        showCalibrationResult(data);
-    } catch (e) {
-        showToast('Calibration failed: ' + e.message, 'error');
-    }
+        const res = await fetch(API_BASE + '/api/camera/calibrate', { method: 'POST', body: formData });
+        showCalibrationResult(await res.json());
+    } catch (e) { showToast('Calibration failed: ' + e.message, 'error'); }
     hideSpinner();
 }
 
 async function calibrateManual() {
     const ppm = parseFloat(document.getElementById('manual-ppm').value);
     if (ppm <= 0) { showToast('Enter a valid pixels-per-mm value', 'warning'); return; }
-
     showSpinner('Setting calibration...');
     try {
-        const res = await fetch('/api/camera/calibrate/manual', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(API_BASE + '/api/camera/calibrate/manual', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pixels_per_mm: ppm })
         });
-        const data = await res.json();
-        showCalibrationResult(data);
-    } catch (e) {
-        showToast('Calibration failed: ' + e.message, 'error');
-    }
+        showCalibrationResult(await res.json());
+    } catch (e) { showToast('Calibration failed: ' + e.message, 'error'); }
     hideSpinner();
 }
 
 function showCalibrationResult(data) {
     const div = document.getElementById('calibration-result');
     if (data.success) {
-        div.innerHTML = `
-            <div class="p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px; border: 1px solid rgba(76,175,80,0.3);">
-                ✅ <strong>Calibration Successful!</strong><br>
-                Pixels per mm: <strong>${data.pixels_per_mm.toFixed(4)}</strong><br>
-                mm per pixel: <strong>${data.mm_per_pixel.toFixed(6)}</strong><br>
-                Method: ${data.method || 'checkerboard'}
-            </div>`;
+        div.innerHTML = `<div class="p-2" style="background:rgba(76,175,80,0.1);border-radius:8px;border:1px solid rgba(76,175,80,0.3);">✅ <strong>Calibration Successful!</strong><br>Pixels per mm: <strong>${data.pixels_per_mm.toFixed(4)}</strong><br>mm per pixel: <strong>${data.mm_per_pixel.toFixed(6)}</strong><br>Method: ${data.method || 'checkerboard'}</div>`;
         showToast('Calibration successful!', 'success');
-        loadCameraInfo();
+        loadCalibrationStatus();
     } else {
         div.innerHTML = `<div class="p-2 text-danger">❌ ${data.error}</div>`;
         showToast('Calibration failed: ' + data.error, 'error');
     }
 }
 
-function useCalibration() {
-    showToast('Calibration will be used in next analysis', 'info');
-}
-
-// Load on page open
-loadCameraInfo();
-refreshPreview();
+enumerateCameras();
+loadCalibrationStatus();
 </script>
 {% endblock %}
