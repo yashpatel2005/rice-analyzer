@@ -489,6 +489,7 @@ def _run_pipeline(
             "success": True,
             "num_grains": 0,
             "elapsed_seconds": round((t1 - t0).total_seconds(), 2),
+            "segmentation_method": segmentation_method,
             "measurements": [],
             "statistics": {},
             "classifications": [],
