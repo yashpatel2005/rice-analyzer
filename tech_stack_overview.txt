@@ -74,7 +74,33 @@ The backend is strictly organized into independent modular phases:
 8. Reporting (Exporting to CSV/Excel/JSON and drawing annotated images)
 
 --------------------------------------------------------------------
-6. DEPLOYMENT & INFRASTRUCTURE
+6. PYTHON BACKEND ARCHITECTURE (Directory Structure)
+--------------------------------------------------------------------
+The Python backend uses a modular, object-oriented architecture designed 
+for maintainability. Key modules include:
+
+• app.py: The main Flask entry point. Handles HTTP routing, request 
+  parsing, CORS, and orchestrates the pipeline modules sequentially.
+• core/preprocessing.py: Contains the ImagePreprocessor class for 
+  color space conversion, CLAHE, and noise reduction.
+• core/segmentation.py: Contains the Segmenter class implementing 
+  classical thresholding and connected components.
+• core/clustering_segmentation.py: Contains ClusteringSegmenter for 
+  advanced unsupervised K-Means + Watershed isolation.
+• core/measurement.py: Contains the GrainMeasurer class mapping OpenCV 
+  contours to 30+ geometrical properties.
+• core/statistics.py: Contains StatisticalAnalyzer for dataset-level 
+  aggregations (mean, standard deviation, Z-score outliers).
+• core/classification.py: Classifies individual grains based on 
+  length-to-width ratios using the GrainClassifier.
+• core/grading.py: Contains RiceGrader to compute purity metrics and 
+  assign a final grade (Premium/A/B/C/Reject).
+• core/reporting.py: Contains ReportGenerator to export analytics into 
+  structured CSV, JSON, and multi-sheet Excel files, as well as 
+  rendering bounding box annotations over the image.
+
+--------------------------------------------------------------------
+7. DEPLOYMENT & INFRASTRUCTURE
 --------------------------------------------------------------------
 • Vercel: The frontend is configured as a Static Site generation (via 
   `build_static.py` and `vercel.json`) allowing the HTML/CSS/JS to be 
