@@ -11,17 +11,18 @@
     let API_BASE_URL = '';
     
     if (ENV_API_URL && ENV_API_URL !== '{{NEXT_PUBLIC_API_BASE_URL}}') {
-        // Build-time environment variable
+        // Build-time environment variable (e.g. Vercel)
         API_BASE_URL = ENV_API_URL;
     } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        // Local development
+        // Local development — Flask serves on 5050
         API_BASE_URL = 'http://localhost:5050';
     } else if (hostname.includes('vercel.app') || hostname.includes('rice-analyzer')) {
         // Vercel deployment - use the Cloudflare tunnel
         API_BASE_URL = 'https://rice-api.yash-patel.in';
     } else {
-        // Fallback
-        API_BASE_URL = 'http://localhost:5050';
+        // Served directly from Flask (IP address, production server, etc.)
+        // Use relative URLs — API is on the same origin as the page
+        API_BASE_URL = '';
     }
     
     // Expose globally
