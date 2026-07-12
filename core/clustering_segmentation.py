@@ -113,11 +113,23 @@ class ClusteringSegmenter:
         valid_grain_idx = 1
         
         # Get unique markers (excluding background 1 and boundaries -1)
+        # Pre-calculate areas to avoid O(N * H * W) operations on noise pixels
+        # clip(min=0) because boundaries are -1
+        flattened_markers = markers.flatten()
+        flattened_markers[flattened_markers < 0] = 0
+        marker_areas = np.bincount(flattened_markers)
+        
         unique_markers = np.unique(markers)
         
         for m in unique_markers:
-            if m == 1 or m == -1:
+            if m <= 1:
                 continue
+                
+            # Fast area check BEFORE creating the full image mask
+            if m < len(marker_areas):
+                area = marker_areas[m]
+                if area < config.MIN_GRAIN_AREA_PX or area > config.MAX_GRAIN_AREA_PX:
+                    continue
                 
             # Create a mask for this specific grain
             grain_mask = np.zeros((h_full, w_full), dtype=np.uint8)
@@ -129,10 +141,10 @@ class ClusteringSegmenter:
                 continue
                 
             contour = max(contours, key=cv2.contourArea)
-            area = cv2.contourArea(contour)
+            actual_area = cv2.contourArea(contour)
             
-            # Filter by area
-            if area < config.MIN_GRAIN_AREA_PX or area > config.MAX_GRAIN_AREA_PX:
+            # Filter by actual contour area just to be safe
+            if actual_area < config.MIN_GRAIN_AREA_PX or actual_area > config.MAX_GRAIN_AREA_PX:
                 continue
                 
             labels_img[markers == m] = valid_grain_idx
