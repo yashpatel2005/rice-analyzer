@@ -154,8 +154,6 @@ async function startCamera() {
         document.getElementById('btn-start-cam').classList.add('hidden');
         document.getElementById('btn-stop-cam').classList.remove('hidden');
         const track = cameraStream.getVideoTracks()[0];
-        const settings = track.getSettings();
-        showCameraProperties(settings, track.label);
         await enumerateCameras();
         showToast('Camera started', 'success');
     } catch (e) {
@@ -191,15 +189,8 @@ function captureFrame() {
     video.style.display = 'none';
     canvas.toBlob(blob => {
         capturedBlob = blob;
-        document.getElementById('analyze-captured-btn').disabled = false;
-        document.getElementById('capture-info').innerHTML = `
-            <div class="p-2" style="background: rgba(76,175,80,0.1); border-radius: 8px;">
-                ✅ Captured: <strong>${canvas.width}×${canvas.height}</strong>
-                <button class="btn btn-secondary btn-sm" style="margin-left:1rem;" onclick="retakePhoto()">🔄 Retake</button>
-            </div>`;
-        document.getElementById('capture-info').classList.remove('hidden');
+        analyzeCaptured();
     }, 'image/jpeg', 0.95);
-    showToast('Frame captured!', 'success');
 }
 
 function retakePhoto() {
@@ -229,18 +220,7 @@ async function analyzeCaptured() {
 }
 
 function showCameraProperties(settings, label) {
-    const propsDiv = document.getElementById('camera-properties');
-    const props = {
-        'Camera': label || 'Unknown',
-        'Resolution': `${settings.width || '?'}×${settings.height || '?'}`,
-        'Frame Rate': settings.frameRate ? settings.frameRate.toFixed(1) + ' fps' : 'N/A',
-        'Facing Mode': settings.facingMode || 'N/A',
-    };
-    let html = '<div class="property-grid">';
-    for (const [key, val] of Object.entries(props)) {
-        html += `<div class="property-item"><div class="prop-key">${key}</div><div class="prop-val">${val}</div></div>`;
-    }
-    propsDiv.innerHTML = html + '</div>';
+    // Disabled as per user request
 }
 
 async function loadCalibrationStatus() {

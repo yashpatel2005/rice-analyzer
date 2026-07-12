@@ -4,12 +4,7 @@
   "devCommand": "echo 'Static site'",
   "installCommand": "pip install --break-system-packages Jinja2",
   "framework": null,
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/$1.html"
-    }
-  ],
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/static/(.*)",

@@ -542,7 +542,8 @@ function renderClassification(classifications, counts) {
 
 function renderQuality(quality, tablePreview) {
     if (!quality || Object.keys(quality).length === 0) {
-        document.getElementById('quality-content').innerHTML = '<p class="text-muted">No grains detected, so no quality metrics are available.</p>';
+        document.getElementById('quality-metrics').innerHTML = '<p class="text-muted">No grains detected, so no quality metrics are available.</p>';
+        document.getElementById('quality-table-preview').innerHTML = '';
         return;
     }
     let html = '<div class="property-grid">';
