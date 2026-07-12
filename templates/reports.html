@@ -245,8 +245,9 @@ function preloadImg(url) {
     img.src = url;
 }
 
-// Init
-loadLatestPreview();
-loadReports();
+document.addEventListener('DOMContentLoaded', () => {
+    loadLatestPreview();
+    loadReports();
+});
 </script>
 {% endblock %}

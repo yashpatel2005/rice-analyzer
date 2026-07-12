@@ -133,7 +133,7 @@
 </div>
 
 <script>
-(async function() {
+document.addEventListener('DOMContentLoaded', async () => {
     // Camera status
     try {
         const res = await fetch(API_BASE + '/api/camera/info');
@@ -245,6 +245,6 @@
     } catch(e) {
         document.getElementById('stat-analyses').textContent = '0';
     }
-})();
+});
 </script>
 {% endblock %}

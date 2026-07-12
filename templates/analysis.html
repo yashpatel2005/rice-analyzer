@@ -279,7 +279,7 @@ function previewFile(file) {
 }
 
 // Check for captured image from camera page
-(async function() {
+document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const imgPath = params.get('img');
     if (imgPath) {
@@ -289,7 +289,7 @@ function previewFile(file) {
         selectedFile = null;
         window.capturedImagePath = imgPath;
     }
-})();
+});
 
 // Run analysis
 async function runAnalysis() {

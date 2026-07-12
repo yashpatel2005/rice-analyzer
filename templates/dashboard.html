@@ -733,7 +733,9 @@ function exportPowerBI() {
 }
 
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
-loadDashboardData();
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboardData();
+});
 </script>
 
 <style>
