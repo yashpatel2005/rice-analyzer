@@ -62,7 +62,7 @@ FILL_HOLES = True
 # ------------------------------------------------------------------
 # Advanced Clustering
 # ------------------------------------------------------------------
-USE_CLUSTERING = False             # Use K-Means + GrabCut instead of thresholding
+USE_CLUSTERING = True             # Use K-Means + Watershed instead of thresholding
 
 # ------------------------------------------------------------------
 # Calibration defaults
