@@ -284,7 +284,7 @@ function previewFile(file) {
     const imgPath = params.get('img');
     if (imgPath) {
         // Show the captured image
-        document.getElementById('input-preview').innerHTML = `<img src="/api/preview/images/${imgPath.split('/').pop()}" alt="Captured Image" onerror="this.parentElement.innerHTML='<p class=\\'text-muted\\'>Captured image ready for analysis</p>'">`;
+        document.getElementById('input-preview').innerHTML = `<img src="${API_BASE}/api/preview/images/${imgPath.split('/').pop()}" alt="Captured Image" onerror="this.parentElement.innerHTML='<p class=\\'text-muted\\'>Captured image ready for analysis</p>'">`;
         // Store the path for analysis
         selectedFile = null;
         window.capturedImagePath = imgPath;

@@ -53,6 +53,15 @@ if static_dst.exists():
     shutil.rmtree(static_dst)
 shutil.copytree(static_src, static_dst)
 
+# Inject environment variables into api-config.js
+api_config_path = static_dst / 'js' / 'api-config.js'
+if api_config_path.exists():
+    content = api_config_path.read_text()
+    api_url = os.environ.get('NEXT_PUBLIC_API_BASE_URL', '')
+    if api_url:
+        content = content.replace("{{NEXT_PUBLIC_API_BASE_URL}}", api_url)
+    api_config_path.write_text(content)
+
 print("Building static pages...")
 for template_name, output_name, extra_context in pages:
     template = env.get_template(template_name)
