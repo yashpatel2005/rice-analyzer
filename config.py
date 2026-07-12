@@ -56,7 +56,7 @@ THRESHOLD_BLOCK_SIZE = 35
 THRESHOLD_C = 5
 MIN_GRAIN_AREA_PX = 50             # discard blobs smaller than this
 MAX_GRAIN_AREA_PX = 500000         # discard blobs larger than this
-WATERSHED_DISTANCE_THRESHOLD = 0.5 # fraction of max distance-transform peak
+WATERSHED_DISTANCE_THRESHOLD = 0.1 # fraction of max distance-transform peak
 FILL_HOLES = True
 
 # ------------------------------------------------------------------
