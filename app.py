@@ -55,6 +55,7 @@ from core.camera import CameraManager
 from core.preprocessing import Preprocessor
 from core.segmentation import Segmenter
 from core.clustering_segmentation import ClusteringSegmenter
+from core.cellpose_segmentation import CellposeSegmenter, create_cellpose_segmenter
 from core.measurement import GrainMeasurer
 from core.statistics import StatisticalAnalyzer
 from core.classification import GrainClassifier
@@ -91,6 +92,7 @@ camera_mgr = CameraManager()
 preprocessor = Preprocessor()
 segmenter = Segmenter()
 clustering_segmenter = ClusteringSegmenter()
+cellpose_segmenter = create_cellpose_segmenter() if config.USE_CELLPOSE else None
 reporter = ReportGenerator()
 grader = GradingEngine()
 
@@ -269,6 +271,7 @@ def analyze_image():
         # Advanced settings overrides
         contrast_boost = request.form.get("contrast_boost", "false").lower() == "true"
         use_clustering = request.form.get("use_clustering", str(config.USE_CLUSTERING)).lower() == "true"
+        use_cellpose = request.form.get("use_cellpose", str(config.USE_CELLPOSE)).lower() == "true"
         
         broken_threshold = request.form.get("broken_threshold")
         broken_threshold = float(broken_threshold) if broken_threshold else None
@@ -285,6 +288,7 @@ def analyze_image():
             image, fpath, use_watershed, ppm, 
             contrast_boost=contrast_boost, 
             use_clustering=use_clustering,
+            use_cellpose=use_cellpose,
             broken_threshold=broken_threshold, 
             block_size=block_size
         )
@@ -315,6 +319,7 @@ def analyze_captured():
     
     contrast_boost = data.get("contrast_boost", False)
     use_clustering = data.get("use_clustering", config.USE_CLUSTERING)
+    use_cellpose = data.get("use_cellpose", config.USE_CELLPOSE)
     broken_threshold = data.get("broken_threshold")
     if broken_threshold is not None:
         broken_threshold = float(broken_threshold)
@@ -329,6 +334,7 @@ def analyze_captured():
         image, img_path, use_watershed, ppm,
         contrast_boost=contrast_boost,
         use_clustering=use_clustering,
+        use_cellpose=use_cellpose,
         broken_threshold=broken_threshold,
         block_size=block_size
     )
@@ -430,6 +436,7 @@ def _run_pipeline(
     ppm: float = 0.0,
     contrast_boost: bool = False,
     use_clustering: bool = False,
+    use_cellpose: bool = False,
     broken_threshold: float = None,
     block_size: int = None
 ) -> Dict[str, Any]:
@@ -437,17 +444,22 @@ def _run_pipeline(
     t0 = datetime.now()
 
     # Phase 3 & 4 – Preprocessing & Segmentation
-    if use_clustering:
+    if use_cellpose and cellpose_segmenter is not None:
+        # Use Cellpose 3 (cyto3) Segmentation
+        seg_result = cellpose_segmenter.segment(image)
+        binary = np.zeros_like(image[:, :, 0])  # Dummy binary for the rest of the pipeline
+        pre_result = {"steps": seg_result.get("steps", {})}
+    elif use_clustering:
         # Use Advanced K-Means + GrabCut Clustering
         seg_result = clustering_segmenter.segment(image)
-        binary = np.zeros_like(image[:,:,0]) # Dummy binary for the rest of the pipeline
+        binary = np.zeros_like(image[:, :, 0])  # Dummy binary for the rest of the pipeline
         pre_result = {"steps": seg_result.get("steps", {})}
     else:
         # Classical OpenCV Pipeline
         pre_result = preprocessor.process(image, contrast_boost=contrast_boost, block_size=block_size)
         binary = pre_result["binary"]
         seg_result = segmenter.segment(binary, use_watershed=use_watershed)
-        
+
     grains = seg_result["grains"]
 
     if not grains:

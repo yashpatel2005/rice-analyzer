@@ -65,6 +65,16 @@ FILL_HOLES = True
 USE_CLUSTERING = True             # Use K-Means + Watershed instead of thresholding
 
 # ------------------------------------------------------------------
+# Cellpose 3 (cyto3) Segmentation
+# ------------------------------------------------------------------
+USE_CELLPOSE = True               # Use Cellpose 3 for segmentation
+CELLPOSE_MODEL = "cyto3"          # Model type: "cyto3", "cyto2", "nuclei"
+CELLPOSE_TILE_SIZE = 512          # Tile size for tiled inference
+CELLPOSE_OVERLAP = 64             # Overlap between tiles
+CELLPOSE_USE_TTA = True           # Use Test-Time Augmentation (rotations + flips)
+CELLPOSE_DEVICE = "auto"          # "auto", "cpu", "cuda", "mps"
+
+# ------------------------------------------------------------------
 # Calibration defaults
 # ------------------------------------------------------------------
 # Pixels-per-millimetre; updated after checkerboard / known-object calibration
