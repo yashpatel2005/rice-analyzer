@@ -342,42 +342,45 @@ function displayResults(data) {
     document.getElementById('upload-section').scrollIntoView({ behavior: 'smooth' });
 
     // Summary stats
-    document.getElementById('r-grains').textContent = data.num_grains;
-    document.getElementById('r-time').textContent = data.elapsed_seconds;
-    document.getElementById('r-calibration').textContent = data.metadata.calibrated ? `${data.metadata.pixels_per_mm.toFixed(2)} px/mm` : 'Uncalibrated';
-    const grade = data.grading.grade;
+    document.getElementById('r-grains').textContent = data.num_grains || 0;
+    document.getElementById('r-time').textContent = data.elapsed_seconds || '—';
+    const meta = data.metadata || {};
+    document.getElementById('r-calibration').textContent = meta.calibrated ? `${(meta.pixels_per_mm || 0).toFixed(2)} px/mm` : 'Uncalibrated';
+    const grade = (data.grading && data.grading.grade) || '—';
     document.getElementById('r-grade').innerHTML = `<span class="badge grade-${grade.toLowerCase().replace(/\s+/g,'-')}">${grade}</span>`;
 
     // Annotated image
-    document.getElementById('annotated-preview').innerHTML = `<img src="${data.annotated_preview}" alt="Annotated Image">`;
+    if (data.annotated_preview) {
+        document.getElementById('annotated-preview').innerHTML = `<img src="${data.annotated_preview}" alt="Annotated Image">`;
+    }
 
     // Measurements table
-    renderMeasurements(data.measurements);
+    renderMeasurements(data.measurements || []);
 
     // Statistics
-    renderStatistics(data.statistics);
+    renderStatistics(data.statistics || {});
 
     // Classification
-    renderClassification(data.classifications, data.category_counts);
+    renderClassification(data.classifications || [], data.category_counts || {});
 
     // Quality
-    renderQuality(data.quality, data.quality_table_preview);
+    renderQuality(data.quality || {}, data.quality_table_preview);
 
     // Grading
-    renderGrading(data.grading);
+    renderGrading(data.grading || {});
 
     // Plots
-    renderPlots(data.plot_previews);
+    renderPlots(data.plot_previews || {});
 
     // Preprocessing steps
-    renderPreprocessing(data.step_previews);
+    renderPreprocessing(data.step_previews || {});
 
     // Downloads
-    renderDownloads(data.files);
+    renderDownloads(data.files || {});
 }
 
 function renderMeasurements(measurements) {
-    if (!measurements.length) return;
+    if (!measurements || !measurements.length) return;
     const keys = Object.keys(measurements[0]).filter(k => !Array.isArray(measurements[0][k]));
     let html = '<thead><tr><th>#</th>';
     // Show key columns
@@ -435,7 +438,8 @@ function renderStatistics(stats) {
     document.getElementById('statistics-content').innerHTML = html;
 }
 
-function renderClassification(classifications, counts) {
+function renderClassification(classifications, categoryCounts) {
+    categoryCounts = categoryCounts || {};
     if (!classifications || classifications.length === 0) {
         document.getElementById('classification-cards').innerHTML = '<p class="text-muted" style="padding:1rem;">No grains detected.</p>';
         document.getElementById('classification-table').innerHTML = '';
@@ -544,6 +548,10 @@ function renderGrading(grading) {
 }
 
 function renderPlots(plots) {
+    if (!plots || !Object.keys(plots).length) {
+        document.getElementById('plots-content').innerHTML = '<p class="text-muted">No plots available.</p>';
+        return;
+    }
     let html = '<div class="grid grid-2">';
     for (const [name, src] of Object.entries(plots)) {
         html += `<div class="card"><div class="card-header"><div class="card-title">${name.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase())}</div></div><div class="image-preview"><img src="${src}" alt="${name}"></div></div>`;
@@ -561,6 +569,10 @@ function renderPreprocessing(steps) {
 }
 
 function renderDownloads(files) {
+    if (!files || !Object.keys(files).length) {
+        document.getElementById('downloads-content').innerHTML = '<p class="text-muted">No downloads available.</p>';
+        return;
+    }
     let html = '<div class="grid grid-3">';
     const items = [
         ['csv', files.csv, 'CSV Measurements', '📑'],
@@ -572,7 +584,7 @@ function renderDownloads(files) {
     ];
     for (const [cat, fname, label, icon] of items) {
         if (fname) {
-            html += `<a href="/api/download/${cat}/${fname}" class="card" style="text-decoration:none; text-align:center;">
+            html += `<a href="${API_BASE}/api/download/${cat}/${fname}" class="card" style="text-decoration:none; text-align:center;">
                 <div style="font-size: 2rem;">${icon}</div>
                 <div class="text-bright font-bold mt-1">${label}</div>
                 <div class="text-muted font-sm">${fname}</div>
@@ -581,7 +593,7 @@ function renderDownloads(files) {
     }
     // Plot downloads
     for (const [name, fname] of Object.entries(files.plots || {})) {
-        html += `<a href="/api/download/plots/${fname}" class="card" style="text-decoration:none; text-align:center;">
+        html += `<a href="${API_BASE}/api/download/plots/${fname}" class="card" style="text-decoration:none; text-align:center;">
             <div style="font-size: 2rem;">📉</div>
             <div class="text-bright font-bold mt-1">${name.replace(/_/g,' ')}</div>
             <div class="text-muted font-sm">${fname}</div>

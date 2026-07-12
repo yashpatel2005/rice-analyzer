@@ -166,6 +166,12 @@ class Preprocessor:
             gray_eq = clahe.apply(gray)
             
             bs = self.block_size or config.THRESHOLD_BLOCK_SIZE
+            # OpenCV requires blockSize to be odd and > 1
+            bs = int(bs)
+            if bs < 3:
+                bs = 3
+            if bs % 2 == 0:
+                bs += 1
             binary = cv2.adaptiveThreshold(
                 gray_eq, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                 cv2.THRESH_BINARY, bs, config.THRESHOLD_C

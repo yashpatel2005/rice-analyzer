@@ -63,9 +63,7 @@ for template_name, output_name, extra_context in pages:
     output_path.write_text(html)
     print(f"  ✓ {output_name}")
 
-# Create _redirects for SPA-like routing (optional)
-redirects = dist_dir / '_redirects'
-redirects.write_text("/* /index.html  200\n")
+# No _redirects needed — cleanUrls in vercel.json handles routing
 
 print(f"\nBuild complete! Output in {dist_dir}/")
 print(f"Deploy with: vercel --prod")
