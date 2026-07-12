@@ -1,0 +1,84 @@
+====================================================================
+           RICE ANALYZER - DETAILED TECHNOLOGY STACK
+====================================================================
+
+This document provides a comprehensive breakdown of all technologies, 
+libraries, algorithms, and architectural patterns used in the Rice 
+Grain Morphometric Analysis System.
+
+--------------------------------------------------------------------
+1. CORE LANGUAGES & FRAMEWORKS
+--------------------------------------------------------------------
+• Python 3: The primary backend language used for the computer 
+  vision pipeline, mathematical computations, and API routing.
+• Flask: A lightweight Python web framework used to serve the backend 
+  API endpoints and coordinate the analysis pipeline.
+• HTML5, CSS3, Vanilla JavaScript (ES6+): Used for the frontend UI. 
+  The frontend is completely decoupled from the backend logic, running 
+  as an independent client.
+
+--------------------------------------------------------------------
+2. COMPUTER VISION & IMAGE PROCESSING (The Engine)
+--------------------------------------------------------------------
+• OpenCV (cv2): The backbone of the entire analysis pipeline. It is 
+  used extensively for:
+    - Preprocessing: Grayscale conversion, Gaussian Blurring, CLAHE 
+      (Contrast Limited Adaptive Histogram Equalization).
+    - Segmentation: K-Means Clustering (for foreground/background 
+      separation in HSV color space), Distance Transforms, and the 
+      Watershed Algorithm (to separate touching grains).
+    - Geometry: Contour extraction, calculating image moments, finding 
+      bounding boxes (axis-aligned and rotated min-area rectangles).
+    - Advanced Metrics: Fitting ellipses (`cv2.fitEllipse`), convex 
+      hulls (`cv2.convexHull`), and calculating Hu Moments.
+• NumPy: Used for high-performance matrix operations, multidimensional 
+  array manipulation, pixel-level math, and Zernike moment approximations.
+• Pillow (PIL): Used specifically for parsing EXIF metadata from uploaded 
+  images to estimate the camera's focal length and field of view for 
+  automatic spatial calibration (pixels-to-millimeter conversion).
+
+--------------------------------------------------------------------
+3. DATA ANALYSIS & REPORTING
+--------------------------------------------------------------------
+• Pandas: Used to aggregate the extracted morphometric data of thousands 
+  of grains into tabular DataFrames, enabling complex statistical 
+  calculations and easy export to CSV and Excel files.
+• Matplotlib & Seaborn: Used on the backend to generate high-quality 
+  static statistical plots (histograms, KDE distribution curves, and 
+  scatter plots) showing grain length, width, aspect ratio, and area.
+
+--------------------------------------------------------------------
+4. FRONTEND UI & VISUALIZATION
+--------------------------------------------------------------------
+• Bootstrap 5: The CSS framework used for responsive grid layouts, 
+  cards, modals, and general styling.
+• Bootstrap Icons: Used for the vector iconography across the dashboard.
+• Chart.js: Used on the client-side to render interactive, animated 
+  charts on the Power BI-style dashboard (e.g., bar charts, scatter plots).
+• noUiSlider: A lightweight JavaScript library used to create the 
+  interactive dual-handle range sliders on the Analysis page.
+• Jinja2: The templating engine used to inject dynamic URLs and 
+  generate the HTML structures.
+
+--------------------------------------------------------------------
+5. PIPELINE ARCHITECTURE (Phase-Based Approach)
+--------------------------------------------------------------------
+The backend is strictly organized into independent modular phases:
+1. Preprocessing (Noise reduction, contrast enhancement)
+2. Segmentation (K-Means + Watershed to isolate grains)
+3. Measurement (Extracting ~30 morphometric features per grain)
+4. Statistics (Calculating medians, standard deviations, outliers)
+5. Classification (Categorizing grains into Long/Medium/Short/Broken)
+6. Quality (Calculating purity, uniformity index, broken percentage)
+7. Grading (Assigning Premium/A/B/C/Reject grades based on rules)
+8. Reporting (Exporting to CSV/Excel/JSON and drawing annotated images)
+
+--------------------------------------------------------------------
+6. DEPLOYMENT & INFRASTRUCTURE
+--------------------------------------------------------------------
+• Vercel: The frontend is configured as a Static Site generation (via 
+  `build_static.py` and `vercel.json`) allowing the HTML/CSS/JS to be 
+  hosted on Vercel's global CDN.
+• API Base URL Injection: The system uses a build-time script to inject 
+  environment variables (`NEXT_PUBLIC_API_BASE_URL`) into the static 
+  frontend to route requests to the deployed Python backend.
