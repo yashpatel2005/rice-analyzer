@@ -524,11 +524,13 @@ def _run_pipeline(
     # Annotated image
     annotated_path = reporter.annotate_image(image, grains, measurements, classifications)
 
-    # Plots
-    plots = reporter.generate_plots(measurements, stats)
+    # Plots - Disabled to fix severe backend latency and OOM crashes
+    # plots = reporter.generate_plots(measurements, stats)
+    plots = {}
 
-    # Quality table
-    quality_table_path = reporter.generate_quality_table(quality, grading)
+    # Quality table - Disabled for performance
+    # quality_table_path = reporter.generate_quality_table(quality, grading)
+    quality_table_path = ""
 
     # Excel
     excel_path = reporter.export_excel(measurements, stats, quality, classifications, grading)
@@ -571,10 +573,13 @@ def _run_pipeline(
             _, buf = cv2.imencode(".png", img)
             plot_previews[name] = f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
 
-    # Quality table preview
-    qt_img = cv2.imread(quality_table_path)
-    _, buf = cv2.imencode(".png", qt_img)
-    quality_table_b64 = f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
+    # Quality table preview (Disabled)
+    quality_table_b64 = None
+    if quality_table_path:
+        qt_img = cv2.imread(quality_table_path)
+        if qt_img is not None:
+            _, buf = cv2.imencode(".png", qt_img)
+            quality_table_b64 = f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
 
     return {
         "success": True,
