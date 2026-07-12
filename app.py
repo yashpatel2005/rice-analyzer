@@ -495,7 +495,17 @@ def _run_pipeline(
             "step_previews": step_previews,
             "annotated_preview": annotated_b64,
             "plot_previews": {},
-            "quality_table_preview": None
+            "quality_table_preview": None,
+            "metadata": {
+                "analysis_time": t1.isoformat(),
+                "calibrated": ppm > 0,
+                "pixels_per_mm": ppm,
+                "use_watershed": use_watershed,
+                "contrast_boost": contrast_boost,
+                "use_clustering": use_clustering,
+                "broken_threshold": broken_threshold,
+                "block_size": block_size
+            }
         }
 
     # Phase 5 – Measurement
