@@ -99,36 +99,19 @@ last_analysis: Dict[str, Any] = {}
 
 
 # ==================================================================
-#  PAGE ROUTES
+#  API HEALTH / STATUS
 # ==================================================================
 @app.route("/")
-def index():
-    return render_template("index.html")
-
-
-@app.route("/camera")
-def camera_page():
-    return render_template("camera.html")
-
-
-@app.route("/analysis")
-def analysis_page():
-    return render_template("analysis.html")
-
-
-@app.route("/reports")
-def reports_page():
-    return render_template("reports.html")
-
-
-@app.route("/dashboard")
-def dashboard_page():
-    return render_template("dashboard.html")
-
-
-@app.route("/settings")
-def settings_page():
-    return render_template("settings.html")
+@app.route("/health")
+def health_check():
+    """Return backend status details."""
+    return jsonify({
+        "status": "online",
+        "service": "Rice Analyzer API Core",
+        "version": "1.0",
+        "timestamp": datetime.now().isoformat(),
+        "camera_connected": camera_mgr.is_calibrated() or bool(camera_mgr.get_properties())
+    })
 
 
 # ==================================================================
