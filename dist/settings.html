@@ -281,7 +281,9 @@ async function saveSettings() {
     hideSpinner();
 }
 
-loadSettings();
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+});
 </script>
 
         </div>

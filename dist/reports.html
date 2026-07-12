@@ -95,9 +95,9 @@
                 <a href="/dashboard" class="btn btn-powerbi btn-lg" id="openDashboardBtn">
                     <i class="bi bi-box-arrow-up-right"></i> Open Dashboard
                 </a>
-                <a href="/api/export/powerbi" class="btn btn-outline-light">
+                <button onclick="window.location.href = API_BASE + '/api/export/powerbi'" class="btn btn-outline-light">
                     <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
-                </a>
+                </button>
             </div>
         </div>
     </div>
@@ -318,9 +318,10 @@ function preloadImg(url) {
     img.src = url;
 }
 
-// Init
-loadLatestPreview();
-loadReports();
+document.addEventListener('DOMContentLoaded', () => {
+    loadLatestPreview();
+    loadReports();
+});
 </script>
 
         </div>

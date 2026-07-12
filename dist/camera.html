@@ -168,6 +168,19 @@
         </div>
         <div id="calibration-result" class="mt-2"></div>
     </div>
+    
+    <!-- Camera Results -->
+    <div id="camera-result" class="card hidden mt-3">
+        <div class="card-header">
+            <div class="card-title">✨ Quick Analysis Result</div>
+        </div>
+        <div class="text-center p-3">
+            <h3 id="cam-res-grains" style="color: var(--primary-light);"></h3>
+            <img id="cam-res-img" src="" style="max-width:100%; border-radius:8px; margin-top:10px; max-height: 400px; object-fit: contain;">
+            <br>
+            <button class="btn btn-primary mt-3" onclick="window.location.href='/analysis'">Open Full Detailed Analysis</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -216,6 +229,9 @@ async function startCamera() {
         document.getElementById('btn-start-cam').classList.add('hidden');
         document.getElementById('btn-stop-cam').classList.remove('hidden');
         const track = cameraStream.getVideoTracks()[0];
+        try {
+            showCameraProperties(track.getSettings(), track.label);
+        } catch(e) {}
         await enumerateCameras();
         showToast('Camera started', 'success');
     } catch (e) {
@@ -273,7 +289,12 @@ async function analyzeCaptured() {
         const data = await res.json();
         if (data.success) {
             sessionStorage.setItem('analysisResult', JSON.stringify(data));
-            window.location.href = '/analysis';
+            document.getElementById('cam-res-grains').innerText = data.num_grains + ' Grains Detected';
+            if (data.annotated_preview) {
+                document.getElementById('cam-res-img').src = data.annotated_preview;
+            }
+            document.getElementById('camera-result').classList.remove('hidden');
+            showToast('Analysis complete! Results are below.', 'success');
         } else {
             showToast('Analysis failed: ' + data.error, 'error');
         }
@@ -282,7 +303,22 @@ async function analyzeCaptured() {
 }
 
 function showCameraProperties(settings, label) {
-    // Disabled as per user request
+    const propsDiv = document.getElementById('optimal-config'); // Or create a new div
+    try {
+        const props = {
+            'Camera': label || 'Unknown',
+            'Resolution': `${settings.width || '?'}×${settings.height || '?'}`,
+            'Frame Rate': settings.frameRate ? settings.frameRate.toFixed(1) + ' fps' : 'N/A',
+            'Facing Mode': settings.facingMode || 'N/A',
+        };
+        let html = '<div class="property-grid">';
+        for (const [key, val] of Object.entries(props)) {
+            html += `<div class="property-item"><div class="prop-key">${key}</div><div class="prop-val">${val}</div></div>`;
+        }
+        propsDiv.innerHTML += html + '</div>';
+    } catch(e) {
+        console.warn("Could not read camera properties on this device", e);
+    }
 }
 
 async function loadCalibrationStatus() {
@@ -356,8 +392,10 @@ function showCalibrationResult(data) {
     }
 }
 
-enumerateCameras();
-loadCalibrationStatus();
+document.addEventListener('DOMContentLoaded', () => {
+    enumerateCameras();
+    loadCalibrationStatus();
+});
 </script>
 
         </div>
