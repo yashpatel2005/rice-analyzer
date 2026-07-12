@@ -30,6 +30,16 @@
                 </label>
                 <small class="text-muted">Use purely mathematical unsupervised machine learning (K-Means + GrabCut) to segment grains based on color. Highly robust without needing neural networks.</small>
             </div>
+            <!-- Cellpose Toggle -->
+            <div class="mb-4">
+                <label class="form-label d-flex align-items-center justify-content-between">
+                    <span>Cellpose 3 (cyto3) — Deep Learning Segmentation</span>
+                    <div class="form-check form-switch" style="margin-bottom:0;">
+                        <input class="form-check-input" type="checkbox" id="set-use-cellpose">
+                    </div>
+                </label>
+                <small class="text-muted">Recommended primary segmenter. Uses neural networks (cyto3). Falls back to clustering if model unavailable.</small>
+            </div>
             <div class="form-group">
                 <label>Morphological Kernel Size</label>
                 <input type="number" class="form-control" id="set-morph-kernel">
@@ -121,6 +131,7 @@ async function loadSettings() {
     document.getElementById('set-blur-kernel').value = JSON.stringify(s.gaussian_blur_kernel);
     document.getElementById('set-clahe-clip').value = s.clahe_clip_limit;
     document.getElementById('set-use-clustering').checked = (s.use_clustering === true);
+    document.getElementById('set-use-cellpose').checked = (s.use_cellpose === true);
     document.getElementById('set-morph-kernel').value = s.morph_kernel_size;
     document.getElementById('set-morph-iter').value = s.morph_iterations;
     document.getElementById('set-threshold-method').value = s.threshold_method;
@@ -161,6 +172,7 @@ async function saveSettings() {
         gaussian_blur_kernel: JSON.parse(document.getElementById('set-blur-kernel').value),
         clahe_clip_limit: parseFloat(document.getElementById('set-clahe-clip').value),
         use_clustering: document.getElementById('set-use-clustering').checked,
+        use_cellpose: document.getElementById('set-use-cellpose').checked,
         morph_kernel_size: parseInt(document.getElementById('set-morph-kernel').value),
         morph_iterations: parseInt(document.getElementById('set-morph-iter').value),
         threshold_method: document.getElementById('set-threshold-method').value,

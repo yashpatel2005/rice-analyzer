@@ -88,8 +88,24 @@ class NumpyJSONProvider(DefaultJSONProvider):
 
 app = Flask(__name__)
 app.json = NumpyJSONProvider(app)
-CORS(app)
+
+# Explicit CORS - required because frontend may be on different origin (Vercel / Cloudflare Pages)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
 app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
+
+# Context processor: inject API base URL into all templates
+@app.context_processor
+def inject_api_base_url():
+    return {
+        "api_base_url": os.getenv("FLASK_API_URL", ""),
+    }
 
 # Global singletons
 camera_mgr = CameraManager()
@@ -107,7 +123,6 @@ last_analysis: Dict[str, Any] = {}
 # ==================================================================
 #  API HEALTH / STATUS
 # ==================================================================
-@app.route("/")
 @app.route("/health")
 def health_check():
     """Return backend status details."""
@@ -118,6 +133,34 @@ def health_check():
         "timestamp": datetime.now().isoformat(),
         "camera_connected": camera_mgr.is_calibrated() or bool(camera_mgr.get_properties())
     })
+
+
+# ==================================================================
+#  FRONTEND PAGE ROUTES
+# ==================================================================
+@app.route("/")
+def dashboard():
+    return render_template("index.html", active_page="home")
+
+@app.route("/camera")
+def camera_page():
+    return render_template("camera.html", active_page="camera")
+
+@app.route("/analysis")
+def analysis_page():
+    return render_template("analysis.html", active_page="analysis")
+
+@app.route("/reports")
+def reports_page():
+    return render_template("reports.html", active_page="reports")
+
+@app.route("/dashboard")
+def powerbi_dashboard():
+    return render_template("dashboard.html", active_page="dashboard")
+
+@app.route("/settings")
+def settings_page():
+    return render_template("settings.html", active_page="settings")
 
 
 # ==================================================================
@@ -563,6 +606,8 @@ def _run_pipeline(
         "calibrated": ppm > 0,
         "pixels_per_mm": ppm,
         "use_watershed": use_watershed,
+        "use_cellpose": use_cellpose,
+        "use_clustering": use_clustering,
     }
     json_path = reporter.export_json(
         measurements, stats, quality, classifications, grading, metadata
@@ -930,6 +975,8 @@ def get_settings():
             "watershed_distance_threshold": config.WATERSHED_DISTANCE_THRESHOLD,
             "pixels_per_mm": camera_mgr.pixels_per_mm,
             "is_calibrated": camera_mgr.is_calibrated(),
+            "use_cellpose": config.USE_CELLPOSE,
+            "use_clustering": config.USE_CLUSTERING,
             "classification_thresholds": config.CLASSIFICATION_THRESHOLDS,
             "grading_rules": config.GRADING_RULES,
             "capture_width": config.CAPTURE_WIDTH,
@@ -1003,6 +1050,14 @@ def update_settings():
     if "capture_height" in data:
         config.CAPTURE_HEIGHT = int(data["capture_height"])
         updates.append("capture_height")
+
+    if "use_cellpose" in data:
+        config.USE_CELLPOSE = bool(data["use_cellpose"])
+        updates.append("use_cellpose")
+
+    if "use_clustering" in data:
+        config.USE_CLUSTERING = bool(data["use_clustering"])
+        updates.append("use_clustering")
 
     return jsonify({"success": True, "updated": updates})
 

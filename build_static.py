@@ -25,10 +25,13 @@ class MockConfig:
 config = MockConfig()
 
 # Base context available to all templates
+API_BASE_URL = os.environ.get('NEXT_PUBLIC_API_BASE_URL', '')
 base_context = {
     'url_for': url_for,
     'config': config,
     'request': type('obj', (object,), {'path': '/'})(),
+    'api_base_url': API_BASE_URL,
+    'hostname': 'vercel.app' if 'vercel' in os.environ.get('VERCEL', '') else 'unknown',
 }
 
 # Pages to build: (template, output_file, extra_context)

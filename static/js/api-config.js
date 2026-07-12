@@ -1,30 +1,41 @@
-// API Configuration - Auto-detects environment
-// When deployed on Vercel, this will use the Vercel env var
-// When running locally, falls back to localhost
+// API Configuration - resolves correct backend URL for every deployment scenario
+// Scenarios:
+//  1) Cloudflare Pages (frontend) + Cloudflare Tunnel backend (api.yash-patel.in)
+//  2) Vercel frontend + backend on backend host
+//  3) Flask serving both frontend+backend directly (same-origin)
+//  4) Local development
 
 (function() {
-    // Check for environment variable (set at build time)
-    const ENV_API_URL = '{{NEXT_PUBLIC_API_BASE_URL}}' || '';
-    
-    // Auto-detect based on hostname
     const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
     let API_BASE_URL = '';
-    
-    if (ENV_API_URL && ENV_API_URL !== '{{NEXT_PUBLIC_API_BASE_URL}}') {
-        // Build-time environment variable (e.g. Vercel)
-        API_BASE_URL = ENV_API_URL;
-    } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        // Local development — Flask serves on 5050
+
+    // Priority 1: Explicit meta tag injected by backend/template
+    const metaApiUrl = document.querySelector('meta[name="api-base-url"]');
+    if (metaApiUrl && metaApiUrl.content) {
+        API_BASE_URL = metaApiUrl.content.trim().replace(/\/$/, '');
+    }
+    // Priority 2: Cloudflare Pages or tunnel on yash-patel.in
+    else if (
+        hostname.includes('yash-patel.in') ||
+        hostname.includes('rice-api') ||
+        hostname.includes('pages.dev')
+    ) {
+        API_BASE_URL = 'https://api.yash-patel.in';
+    }
+    // Priority 3: Vercel deployment
+    else if (hostname.includes('vercel.app')) {
+        API_BASE_URL = 'https://api.yash-patel.in';
+    }
+    // Priority 4: Local development
+    else if (hostname === 'localhost' || hostname === '127.0.0.1') {
         API_BASE_URL = 'http://localhost:5050';
-    } else if (hostname.includes('vercel.app') || hostname.includes('rice-analyzer')) {
-        // Vercel deployment - use the Cloudflare tunnel
-        API_BASE_URL = 'https://rice-api.yash-patel.in';
-    } else {
-        // Served directly from Flask (IP address, production server, etc.)
-        // Use relative URLs — API is on the same origin as the page
+    }
+    // Priority 5: Same origin fallback (backend serves frontend)
+    else {
         API_BASE_URL = '';
     }
-    
+
     // Expose globally
     window.API_BASE_URL = API_BASE_URL;
     window.API_ENDPOINTS = {
@@ -55,6 +66,6 @@
             update: `${API_BASE_URL}/api/settings`
         }
     };
-    
+
     console.log('[API Config] Base URL:', API_BASE_URL);
 })();
