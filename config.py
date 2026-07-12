@@ -60,10 +60,9 @@ WATERSHED_DISTANCE_THRESHOLD = 0.2 # fraction of max distance-transform peak
 FILL_HOLES = True
 
 # ------------------------------------------------------------------
-# Advanced & Deep Learning
+# Advanced Clustering
 # ------------------------------------------------------------------
-USE_DEEP_LEARNING = False          # Use YOLOv8 instead of OpenCV
-YOLO_MODEL_PATH = os.path.join(BASE_DIR, "models", "rice_yolov8_seg.pt")
+USE_CLUSTERING = False             # Use K-Means + GrabCut instead of thresholding
 
 # ------------------------------------------------------------------
 # Calibration defaults

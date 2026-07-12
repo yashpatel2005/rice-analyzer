@@ -54,7 +54,7 @@ import config
 from core.camera import CameraManager
 from core.preprocessing import Preprocessor
 from core.segmentation import Segmenter
-from core.ml_segmentation import ML_Segmenter
+from core.clustering_segmentation import ClusteringSegmenter
 from core.measurement import GrainMeasurer
 from core.statistics import StatisticalAnalyzer
 from core.classification import GrainClassifier
@@ -90,7 +90,7 @@ app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
 camera_mgr = CameraManager()
 preprocessor = Preprocessor()
 segmenter = Segmenter()
-ml_segmenter = ML_Segmenter()
+clustering_segmenter = ClusteringSegmenter()
 reporter = ReportGenerator()
 grader = GradingEngine()
 
@@ -285,7 +285,7 @@ def analyze_image():
         
         # Advanced settings overrides
         contrast_boost = request.form.get("contrast_boost", "false").lower() == "true"
-        use_ml = request.form.get("use_deep_learning", str(config.USE_DEEP_LEARNING)).lower() == "true"
+        use_clustering = request.form.get("use_clustering", str(config.USE_CLUSTERING)).lower() == "true"
         
         broken_threshold = request.form.get("broken_threshold")
         broken_threshold = float(broken_threshold) if broken_threshold else None
@@ -301,7 +301,7 @@ def analyze_image():
         result = _run_pipeline(
             image, fpath, use_watershed, ppm, 
             contrast_boost=contrast_boost, 
-            use_ml=use_ml,
+            use_clustering=use_clustering,
             broken_threshold=broken_threshold, 
             block_size=block_size
         )
@@ -331,7 +331,7 @@ def analyze_captured():
     ppm = float(data.get("pixels_per_mm", camera_mgr.pixels_per_mm))
     
     contrast_boost = data.get("contrast_boost", False)
-    use_ml = data.get("use_deep_learning", config.USE_DEEP_LEARNING)
+    use_clustering = data.get("use_clustering", config.USE_CLUSTERING)
     broken_threshold = data.get("broken_threshold")
     if broken_threshold is not None:
         broken_threshold = float(broken_threshold)
@@ -345,7 +345,7 @@ def analyze_captured():
     result = _run_pipeline(
         image, img_path, use_watershed, ppm,
         contrast_boost=contrast_boost,
-        use_ml=use_ml,
+        use_clustering=use_clustering,
         broken_threshold=broken_threshold,
         block_size=block_size
     )
@@ -446,7 +446,7 @@ def _run_pipeline(
     use_watershed: bool = True,
     ppm: float = 0.0,
     contrast_boost: bool = False,
-    use_ml: bool = False,
+    use_clustering: bool = False,
     broken_threshold: float = None,
     block_size: int = None
 ) -> Dict[str, Any]:
@@ -454,9 +454,9 @@ def _run_pipeline(
     t0 = datetime.now()
 
     # Phase 3 & 4 – Preprocessing & Segmentation
-    if use_ml:
-        # Use YOLOv8 Deep Learning Model
-        seg_result = ml_segmenter.segment(image)
+    if use_clustering:
+        # Use Advanced K-Means + GrabCut Clustering
+        seg_result = clustering_segmenter.segment(image)
         binary = np.zeros_like(image[:,:,0]) # Dummy binary for the rest of the pipeline
         pre_result = {"steps": seg_result.get("steps", {})}
     else:
