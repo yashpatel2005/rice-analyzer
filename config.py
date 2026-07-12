@@ -51,13 +51,19 @@ MORPH_ITERATIONS = 2
 # ------------------------------------------------------------------
 # Segmentation defaults
 # ------------------------------------------------------------------
-THRESHOLD_METHOD = "otsu"          # "otsu" | "adaptive"
-THRESHOLD_BLOCK_SIZE = 35
-THRESHOLD_C = 5
+THRESHOLD_METHOD = "adaptive"      # "otsu" | "adaptive" | "canny_watershed"
+THRESHOLD_BLOCK_SIZE = 45
+THRESHOLD_C = 2
 MIN_GRAIN_AREA_PX = 50             # discard blobs smaller than this
 MAX_GRAIN_AREA_PX = 500000         # discard blobs larger than this
-WATERSHED_DISTANCE_THRESHOLD = 0.1 # fraction of max distance-transform peak
+WATERSHED_DISTANCE_THRESHOLD = 0.2 # fraction of max distance-transform peak
 FILL_HOLES = True
+
+# ------------------------------------------------------------------
+# Advanced & Deep Learning
+# ------------------------------------------------------------------
+USE_DEEP_LEARNING = False          # Use YOLOv8 instead of OpenCV
+YOLO_MODEL_PATH = os.path.join(BASE_DIR, "models", "rice_yolov8_seg.pt")
 
 # ------------------------------------------------------------------
 # Calibration defaults

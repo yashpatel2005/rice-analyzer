@@ -103,8 +103,13 @@ class Segmenter:
         if max_area is None:
             max_area = self.max_area
 
-        # Distance transform
-        dist = cv2.distanceTransform(binary, cv2.DIST_L2, 5)
+        # Distance transform (with optional Canny Edge snapping)
+        if getattr(config, "THRESHOLD_METHOD", "otsu") == "canny_watershed":
+            edges = cv2.Canny(binary, 50, 150)
+            binary_no_edges = cv2.bitwise_and(binary, cv2.bitwise_not(edges))
+            dist = cv2.distanceTransform(binary_no_edges, cv2.DIST_L2, 5)
+        else:
+            dist = cv2.distanceTransform(binary, cv2.DIST_L2, 5)
 
         # Adaptive min_distance based on expected grain size
         # Larger images → larger grains → larger min_distance

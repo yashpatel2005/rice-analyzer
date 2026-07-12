@@ -151,72 +151,35 @@ class Preprocessor:
         """
         Binarise the grayscale image with automatic polarity detection.
         Ensures grains end up as white (255) regardless of original contrast.
-
-        For black-background images: uses a LOW global threshold to capture
-        translucent/semi-transparent rice grains as whole objects.
         """
         method = method or config.THRESHOLD_METHOD
+        polarity = self._detect_polarity(gray)
 
-        # -----------------------------------------------------------
-        # BLACK BACKGROUND FAST PATH
-        # If the background is clearly black, use a simple low threshold
-        # so translucent rice (pixel value ~40-80) is still captured
-        # instead of being treated as background and splitting the grain.
-        # -----------------------------------------------------------
         if self._is_black_background(gray):
-            # Use a low fixed threshold. Anything above ~15-25 intensity
-            # on a black background is very likely a grain or part of one.
-            # We use 20 as the threshold to be conservative.
+            # Safe low threshold for translucent rice
             _, binary = cv2.threshold(gray, 20, 255, cv2.THRESH_BINARY)
             return binary
 
-        polarity = self._detect_polarity(gray)
-
-        if method == "otsu":
-            otsu_val, binary_std = cv2.threshold(
-                gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
-            )
-            _, binary_inv = cv2.threshold(
-                gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
-            )
-
-            if polarity == "bright_on_dark":
-                binary = binary_std
-            elif polarity == "dark_on_bright":
-                binary = binary_inv
-            else:
-                # Auto: pick whichever gives the minority as foreground
-                white_std = np.sum(binary_std == 255)
-                white_inv = np.sum(binary_inv == 255)
-                total = gray.shape[0] * gray.shape[1]
-
-                std_pct = white_std / total
-                inv_pct = white_inv / total
-
-                if std_pct < 0.5 and std_pct > 0.001:
-                    binary = binary_std
-                elif inv_pct < 0.5 and inv_pct > 0.001:
-                    binary = binary_inv
-                elif std_pct < inv_pct:
-                    binary = binary_std
-                else:
-                    binary = binary_inv
-
-        elif method == "adaptive":
+        if method == "adaptive":
+            # CLAHE first for uneven illumination
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            gray_eq = clahe.apply(gray)
+            
             bs = self.block_size or config.THRESHOLD_BLOCK_SIZE
             binary = cv2.adaptiveThreshold(
-                gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,
-                bs, config.THRESHOLD_C,
+                gray_eq, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY, bs, config.THRESHOLD_C
             )
+            # Ensure polarity is correct
             white_pct = np.sum(binary == 255) / (gray.shape[0] * gray.shape[1])
             if white_pct > 0.5:
                 binary = cv2.bitwise_not(binary)
-        else:
-            _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-            white_pct = np.sum(binary == 255) / (gray.shape[0] * gray.shape[1])
-            if white_pct > 0.5:
-                binary = cv2.bitwise_not(binary)
+                
+        else: # otsu
+            if polarity == "bright_on_dark":
+                _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            else:
+                _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
         return binary
 
