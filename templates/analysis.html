@@ -454,7 +454,7 @@ function renderClassification(classifications, categoryCounts) {
         undersized_grain: 'badge-secondary', abnormal_grain: 'badge-danger',
     };
     let cardsHtml = '';
-    for (const [cat, count] of Object.entries(counts)) {
+    for (const [cat, count] of Object.entries(categoryCounts)) {
         cardsHtml += `
             <div class="stat-card">
                 <div class="stat-value">${count}</div>
