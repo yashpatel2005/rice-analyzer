@@ -59,10 +59,11 @@
             <div class="grid grid-3 mt-2" style="margin-top: 1rem;">
                 <div class="form-group">
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="use-clustering">
+                        <input class="form-check-input" type="checkbox" id="use-clustering" checked disabled>
+                        <input type="hidden" id="use-clustering-hidden" value="true">
                         <label class="form-check-label" for="use-clustering">
-                            Use Advanced Clustering (K-Means/GrabCut)
-                            <small class="d-block text-muted">Mathematical unsupervised segmentation.</small>
+                            Use Advanced Clustering (K-Means + Watershed)
+                            <small class="d-block text-muted">Always enabled — optimized unsupervised segmentation.</small>
                         </label>
                     </div>
                 </div>
@@ -296,7 +297,7 @@ async function runAnalysis() {
     const useWatershed = document.getElementById('use-watershed').value;
     const ppm = document.getElementById('ppm-input').value;
     const contrastBoost = document.getElementById('contrast-boost').value;
-    const useClustering = document.getElementById('use-clustering').checked;
+    const useClustering = true; // Always enabled
     const brokenThreshold = document.getElementById('broken-threshold').value;
     const blockSize = document.getElementById('block-size').value;
 
