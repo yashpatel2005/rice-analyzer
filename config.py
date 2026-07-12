@@ -73,6 +73,9 @@ CELLPOSE_TILE_SIZE = 512          # Tile size for tiled inference
 CELLPOSE_OVERLAP = 64             # Overlap between tiles
 CELLPOSE_USE_TTA = True           # Use Test-Time Augmentation (rotations + flips)
 CELLPOSE_DEVICE = "auto"          # "auto", "cpu", "cuda", "mps"
+CELLPOSE_DIAMETER_ESTIMATE = 0    # 0 = auto-detect; set >0 for rice-grain-specific diameter (px)
+CELLPOSE_FLOW_THRESHOLD = 0.4     # Flow error threshold (lower = stricter segmentation)
+CELLPOSE_CELLPROB_THRESHOLD = 0.0 # Cell probability threshold (higher = only confident detections)
 
 # ------------------------------------------------------------------
 # Calibration defaults

@@ -453,16 +453,19 @@ def _run_pipeline(
         seg_result = cellpose_segmenter.segment(image)
         binary = np.zeros_like(image[:, :, 0])  # Dummy binary for the rest of the pipeline
         pre_result = {"steps": seg_result.get("steps", {})}
+        segmentation_method = "cellpose_cyto3"
     elif use_clustering:
         # Use Advanced K-Means + GrabCut Clustering
         seg_result = clustering_segmenter.segment(image)
         binary = np.zeros_like(image[:, :, 0])  # Dummy binary for the rest of the pipeline
         pre_result = {"steps": seg_result.get("steps", {})}
+        segmentation_method = "kmeans_watershed"
     else:
         # Classical OpenCV Pipeline
         pre_result = preprocessor.process(image, contrast_boost=contrast_boost, block_size=block_size)
         binary = pre_result["binary"]
         seg_result = segmenter.segment(binary, use_watershed=use_watershed)
+        segmentation_method = "classical_opencv"
 
     grains = seg_result["grains"]
 
@@ -603,6 +606,7 @@ def _run_pipeline(
         "elapsed_seconds": round(elapsed, 2),
         "image_path": image_path,
         "metadata": metadata,
+        "segmentation_method": segmentation_method,
         # Phase 4
         "num_grains": len(grains),
         "raw_components": seg_result["raw_components"],
@@ -1007,10 +1011,11 @@ def update_settings():
 # ==================================================================
 def test_module_imports():
     """Pytest marker: ensures core modules import cleanly."""
-    __import__("Rice Analyzer.core.grading")
-    __import__("Rice Analyzer.core.classification")
-    __import__("Rice Analyzer.core.preprocessing")
-    __import__("Rice Analyzer.core.segmentation")
+    __import__("core.grading")
+    __import__("core.classification")
+    __import__("core.preprocessing")
+    __import__("core.segmentation")
+    __import__("core.cellpose_segmentation")
 
 
 if __name__ == "__main__":
