@@ -63,6 +63,10 @@ from core.quality import QualityAnalyzer
 from core.reporting import ReportGenerator
 from core.grading import GradingEngine
 
+# Flask configuration from environment (for cloud deployment)
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", "5050"))
+
 # ------------------------------------------------------------------
 # Flask app
 # ------------------------------------------------------------------
@@ -1015,7 +1019,7 @@ if __name__ == "__main__":
     print("  Starting Flask server...")
     print("=" * 60)
     app.run(
-        host=config.FLASK_HOST,
-        port=config.FLASK_PORT,
+        host=HOST,
+        port=PORT,
         debug=False,
     )

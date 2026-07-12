@@ -1,0 +1,16 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[env]
+# These will be set in Railway Dashboard > Variables
+# PORT=5050
+# HOST=0.0.0.0
+# FLASK_DEBUG=false
+# USE_CELLPOSE=true
+# USE_CLUSTERING=true

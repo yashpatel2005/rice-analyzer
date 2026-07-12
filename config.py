@@ -134,9 +134,9 @@ GRADING_RULES = {
 }
 
 # ------------------------------------------------------------------
-# Flask
+# Flask (read from environment for cloud deployment)
 # ------------------------------------------------------------------
-FLASK_HOST = "0.0.0.0"
-FLASK_PORT = 5050
-FLASK_DEBUG = True
-MAX_CONTENT_LENGTH = 64 * 1024 * 1024  # 64 MB upload limit
+FLASK_HOST = os.getenv("FLASK_HOST", "0.0.0.0")
+FLASK_PORT = int(os.getenv("FLASK_PORT", "5050"))
+FLASK_DEBUG = os.getenv("FLASK_DEBUG", "True").lower() == "true"
+MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(64 * 1024 * 1024)))
