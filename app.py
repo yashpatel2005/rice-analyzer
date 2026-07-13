@@ -35,10 +35,13 @@ import os
 import io
 import json
 import base64
+import logging
 import threading
 from datetime import datetime
 from typing import Dict, Any
 import traceback
+
+logger = logging.getLogger(__name__)
 
 import cv2
 import numpy as np
@@ -483,10 +486,19 @@ def _run_pipeline(
         # Use Cellpose 3 (cyto3) Segmentation
         cellpose = get_cellpose_segmenter()
         if cellpose is not None:
-            seg_result = cellpose.segment(image)
-            binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
-            pre_result = {"steps": seg_result.get("steps", {})}
-            segmentation_method = "cellpose_cyto3"
+            try:
+                seg_result = cellpose.segment(image)
+                binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
+                pre_result = {"steps": seg_result.get("steps", {})}
+                segmentation_method = "cellpose_cyto3"
+            except Exception as e:
+                logger.warning(f"Cellpose failed ({e}), falling back to clustering")
+                use_cellpose = False
+                use_clustering = True
+                seg_result = clustering_segmenter.segment(image)
+                binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
+                pre_result = {"steps": seg_result.get("steps", {})}
+                segmentation_method = "kmeans_watershed"
         else:
             # Cellpose requested but unavailable — fall back to clustering
             use_cellpose = False
