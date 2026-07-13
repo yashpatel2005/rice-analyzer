@@ -54,6 +54,8 @@
         reports: {
             list: `${API_BASE_URL}/api/reports`,
             latest: `${API_BASE_URL}/api/reports/latest`,
+            runs: `${API_BASE_URL}/api/reports/list`,
+            byId: (runId) => `${API_BASE_URL}/api/reports/${runId}`,
             download: (cat, file) => `${API_BASE_URL}/api/download/${cat}/${file}`,
             preview: (cat, file) => `${API_BASE_URL}/api/preview/${cat}/${file}`
         },
