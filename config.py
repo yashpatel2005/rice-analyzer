@@ -72,7 +72,7 @@ CELLPOSE_MODEL = "cyto3"          # Model type: "cyto3", "cyto2", "nuclei"
 CELLPOSE_TILE_SIZE = 512          # Tile size for tiled inference
 CELLPOSE_OVERLAP = 64             # Overlap between tiles
 CELLPOSE_USE_TTA = False          # Use Test-Time Augmentation (rotations + flips) - disabled to avoid GPU OOM
-CELLPOSE_DEVICE = "cpu"           # "auto", "cpu", "cuda", "mps" - CPU avoids GPU OOM crashes
+CELLPOSE_DEVICE = "cuda"          # Run Cellpose on NVIDIA GPU (dnw-testing has CUDA)
 CELLPOSE_DIAMETER_ESTIMATE = 0    # 0 = auto-detect; set >0 for rice-grain-specific diameter (px)
 CELLPOSE_FLOW_THRESHOLD = 0.4     # Flow error threshold (lower = stricter segmentation)
 CELLPOSE_CELLPROB_THRESHOLD = 0.0 # Cell probability threshold (higher = only confident detections)
