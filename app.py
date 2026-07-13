@@ -744,10 +744,97 @@ def list_reports():
 
 @app.route("/api/reports/latest")
 def latest_report():
-    """Return the last analysis result."""
-    if not last_analysis:
-        return jsonify({"success": False, "error": "No analysis has been run yet"}), 404
-    return jsonify(last_analysis)
+    """Return the last analysis result. Falls back to most recent JSON on disk."""
+    if last_analysis and last_analysis.get("success"):
+        return jsonify(last_analysis)
+
+    # Fallback: load most recent JSON report from disk
+    if os.path.isdir(config.JSON_DIR):
+        json_files = sorted(
+            [f for f in os.listdir(config.JSON_DIR) if f.endswith("_report.json")],
+            reverse=True
+        )
+        if json_files:
+            try:
+                fpath = os.path.join(config.JSON_DIR, json_files[0])
+                with open(fpath, "r") as f:
+                    data = json.load(f)
+                # Load annotated image
+                run_id = json_files[0].replace("_report.json", "")
+                annotated_path = os.path.join(config.IMAGE_DIR, f"{run_id}_annotated.jpg")
+                if os.path.exists(annotated_path):
+                    img = cv2.imread(annotated_path)
+                    if img is not None:
+                        _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                        data["annotated_preview"] = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
+                data["success"] = True
+                return jsonify(data)
+            except Exception:
+                pass
+
+    return jsonify({"success": False, "error": "No analysis has been run yet"}), 404
+
+
+@app.route("/api/reports/list")
+def list_all_runs():
+    """List all analysis runs with summary info, sorted by date (newest first)."""
+    runs = []
+    if not os.path.isdir(config.JSON_DIR):
+        return jsonify({"success": True, "runs": []})
+
+    for fname in sorted(os.listdir(config.JSON_DIR), reverse=True):
+        if not fname.endswith("_report.json"):
+            continue
+        run_id = fname.replace("_report.json", "")
+        fpath = os.path.join(config.JSON_DIR, fname)
+        try:
+            with open(fpath, "r") as f:
+                data = json.load(f)
+            runs.append({
+                "run_id": run_id,
+                "timestamp": data.get("timestamp", ""),
+                "num_grains": data.get("num_grains", 0),
+                "grade": data.get("grading", {}).get("grade", "—"),
+                "grade_key": data.get("grading", {}).get("grade_key", ""),
+                "calibrated": data.get("metadata", {}).get("calibrated", False),
+                "segmentation_method": data.get("segmentation_method", ""),
+                "broken_pct": data.get("quality", {}).get("broken_pct", 0),
+                "uniformity_index": data.get("quality", {}).get("uniformity_index", 0),
+                "has_annotated": os.path.exists(
+                    os.path.join(config.IMAGE_DIR, f"{run_id}_annotated.jpg")
+                ),
+            })
+        except Exception:
+            continue
+
+    return jsonify({"success": True, "runs": runs})
+
+
+@app.route("/api/reports/<run_id>")
+def get_report(run_id):
+    """Load a specific analysis run from its JSON report file."""
+    # Sanitize run_id to prevent path traversal
+    run_id = os.path.basename(run_id)
+    fpath = os.path.join(config.JSON_DIR, f"{run_id}_report.json")
+    if not os.path.exists(fpath):
+        return jsonify({"success": False, "error": f"Report '{run_id}' not found"}), 404
+
+    try:
+        with open(fpath, "r") as f:
+            data = json.load(f)
+
+        # Load annotated image as base64
+        annotated_path = os.path.join(config.IMAGE_DIR, f"{run_id}_annotated.jpg")
+        if os.path.exists(annotated_path):
+            img = cv2.imread(annotated_path)
+            if img is not None:
+                _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                data["annotated_preview"] = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
+
+        data["success"] = True
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/download/<category>/<filename>")
@@ -787,11 +874,40 @@ def preview_file(category, filename):
 
 @app.route("/api/dashboard/data")
 def dashboard_data():
-    """Return the latest analysis data formatted for the Power BI-style dashboard."""
-    if not last_analysis or not last_analysis.get("success"):
-        return jsonify({"success": False, "error": "No analysis has been run yet"}), 404
+    """Return analysis data formatted for the Power BI-style dashboard.
+    Accepts optional ?run_id=xxx to load a specific past run from disk.
+    """
+    run_id = request.args.get("run_id")
 
-    data = last_analysis
+    if run_id:
+        # Load specific run from JSON file
+        run_id = os.path.basename(run_id)
+        fpath = os.path.join(config.JSON_DIR, f"{run_id}_report.json")
+        if not os.path.exists(fpath):
+            return jsonify({"success": False, "error": f"Run '{run_id}' not found"}), 404
+        try:
+            with open(fpath, "r") as f:
+                data = json.load(f)
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    else:
+        # Use last in-memory analysis, or fall back to most recent on disk
+        if last_analysis and last_analysis.get("success"):
+            data = last_analysis
+        elif os.path.isdir(config.JSON_DIR):
+            json_files = sorted(
+                [f for f in os.listdir(config.JSON_DIR) if f.endswith("_report.json")],
+                reverse=True
+            )
+            if not json_files:
+                return jsonify({"success": False, "error": "No analysis has been run yet"}), 404
+            try:
+                with open(os.path.join(config.JSON_DIR, json_files[0]), "r") as f:
+                    data = json.load(f)
+            except Exception as e:
+                return jsonify({"success": False, "error": str(e)}), 500
+        else:
+            return jsonify({"success": False, "error": "No analysis has been run yet"}), 404
     measurements = data.get("measurements", [])
     classifications = data.get("classifications", [])
     quality = data.get("quality", {})
@@ -912,10 +1028,38 @@ def dashboard_data():
 @app.route("/api/export/powerbi")
 def export_powerbi():
     """Export a Power BI-ready Excel workbook with multiple clean tables."""
-    if not last_analysis or not last_analysis.get("success"):
-        return jsonify({"success": False, "error": "No analysis has been run yet"}), 404
+    # Accept optional run_id, fall back to last_analysis
+    run_id = request.args.get("run_id")
+    data = None
 
-    data = last_analysis
+    if run_id:
+        run_id = os.path.basename(run_id)
+        fpath = os.path.join(config.JSON_DIR, f"{run_id}_report.json")
+        if os.path.exists(fpath):
+            try:
+                with open(fpath, "r") as f:
+                    data = json.load(f)
+            except Exception:
+                pass
+
+    if data is None:
+        if not last_analysis or not last_analysis.get("success"):
+            # Try loading most recent from disk
+            if os.path.isdir(config.JSON_DIR):
+                json_files = sorted(
+                    [f for f in os.listdir(config.JSON_DIR) if f.endswith("_report.json")],
+                    reverse=True
+                )
+                if json_files:
+                    try:
+                        with open(os.path.join(config.JSON_DIR, json_files[0]), "r") as f:
+                            data = json.load(f)
+                    except Exception:
+                        pass
+            if data is None:
+                return jsonify({"success": False, "error": "No analysis has been run yet"}), 404
+        else:
+            data = last_analysis
     measurements = data.get("measurements", [])
     classifications = data.get("classifications", [])
     quality = data.get("quality", {})
