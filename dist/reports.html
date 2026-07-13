@@ -161,8 +161,7 @@
 // Load latest analysis for the preview panel
 async function loadLatestPreview() {
     try {
-        const res = await fetch(API_BASE + '/api/reports/latest');
-        const data = await res.json();
+        const data = await apiFetch('/api/reports/latest');
         if (!data.success) return;
 
         const card = document.getElementById('latestPreviewCard');
@@ -201,8 +200,7 @@ async function loadReports() {
         <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 1rem;"></div>Loading...</div>`;
 
     try {
-        const res = await fetch(API_BASE + '/api/reports');
-        const data = await res.json();
+        const data = await apiFetch('/api/reports');
 
         if (!data.success) {
             div.innerHTML = '<p class="text-danger" style="padding:1rem;">Failed to load reports</p>';

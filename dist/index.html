@@ -210,8 +210,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // Camera status
     try {
-        const res = await fetch(API_BASE + '/api/camera/info');
-        const data = await res.json();
+        const data = await apiFetch('/api/camera/info');
         const el = document.getElementById('stat-camera');
         if (data.success) {
             el.textContent = 'Connected';
@@ -239,8 +238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Report count
     try {
-        const res = await fetch(API_BASE + '/api/reports');
-        const data = await res.json();
+        const data = await apiFetch('/api/reports');
         if (data.success) {
             const total = Object.values(data.reports).reduce((s, a) => s + a.length, 0);
             const el = document.getElementById('stat-reports');
@@ -252,8 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Latest analysis
     try {
-        const res = await fetch(API_BASE + '/api/reports/latest');
-        const data = await res.json();
+        const data = await apiFetch('/api/reports/latest');
         if (data.success) {
             document.getElementById('stat-analyses').textContent = '1+';
             document.getElementById('latest-analysis-card').style.display = 'block';

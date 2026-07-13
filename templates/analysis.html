@@ -331,18 +331,18 @@ async function runAnalysis() {
     showSpinner('Running 10-phase analysis pipeline...');
 
     try {
-        const res = await fetch(API_BASE + '/api/analyze', { method: 'POST', body: formData });
-        const data = await res.json();
+        const data = await apiFetch('/api/analyze', { method: 'POST', body: formData });
 
         if (data.success) {
             analysisResult = data;
             displayResults(data);
             showToast(`Analysis complete: ${data.num_grains} grains detected in ${data.elapsed_seconds}s`, 'success');
         } else {
-            showToast('Analysis failed: ' + data.error, 'error');
+            showToast('Analysis failed: ' + (data.error || 'Unknown server error'), 'error');
         }
     } catch (e) {
         showToast('Analysis failed: ' + e.message, 'error');
+        console.error('Analysis fetch error:', e);
     }
     hideSpinner();
 }

@@ -197,8 +197,7 @@
 
 <script>
 async function loadSettings() {
-    const res = await fetch(API_BASE + '/api/settings');
-    const data = await res.json();
+    const data = await apiFetch('/api/settings');
     if (!data.success) return;
     const s = data.settings;
 
@@ -276,12 +275,10 @@ async function saveSettings() {
 
     showSpinner('Saving settings...');
     try {
-        const res = await fetch(API_BASE + '/api/settings', {
+        const result = await apiFetch('/api/settings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        const result = await res.json();
         if (result.success) {
             showToast('Settings saved successfully!', 'success');
             document.getElementById('settings-status').innerHTML = `<div class="p-2" style="background:rgba(76,175,80,0.1);border-radius:8px;">✅ Updated: ${result.updated.join(', ')}</div>`;

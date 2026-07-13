@@ -8,21 +8,48 @@
 // ------------------------------------------------------------------
 const API_BASE = window.API_BASE_URL || '';
 
-// Helper for API calls
+// Helper for API calls with timeout, CORS, and better error messages
 async function apiFetch(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
+    if (!API_BASE) {
+        throw new Error('API base URL is not configured. Please reload the page.');
+    }
+
     const isFormData = options.body instanceof FormData;
     const headers = isFormData ? {} : {
         'Content-Type': 'application/json',
     };
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            ...headers,
-            ...options.headers
+
+    const controller = new AbortController();
+    const timeoutMs = options.timeout || 60000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            mode: 'cors',
+            signal: controller.signal,
+            headers: {
+                ...headers,
+                ...options.headers
+            }
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status} ${response.statusText}`);
         }
-    });
-    return response.json();
+        return await response.json();
+    } catch (e) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            throw new Error(`Request timed out after ${timeoutMs / 1000}s. The backend may be busy or unreachable.`);
+        }
+        if (e.message && e.message.includes('Failed to fetch')) {
+            throw new Error(`Cannot reach backend at ${API_BASE}. Please check your connection and try again.`);
+        }
+        throw e;
+    }
 }
 
 // ------------------------------------------------------------------

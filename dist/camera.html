@@ -286,8 +286,7 @@ async function analyzeCaptured() {
     try {
         const formData = new FormData();
         formData.append('image', capturedBlob, 'camera_capture.jpg');
-        const res = await fetch(API_BASE + '/api/analyze', { method: 'POST', body: formData });
-        const data = await res.json();
+        const data = await apiFetch('/api/analyze', { method: 'POST', body: formData });
         if (data.success) {
             sessionStorage.setItem('analysisResult', JSON.stringify(data));
             document.getElementById('cam-res-grains').innerText = data.num_grains + ' Grains Detected';
@@ -324,8 +323,7 @@ function showCameraProperties(settings, label) {
 
 async function loadCalibrationStatus() {
     try {
-        const res = await fetch(API_BASE + '/api/camera/calibration_status');
-        const data = await res.json();
+        const data = await apiFetch('/api/camera/calibration_status');
         const div = document.getElementById('optimal-config');
         if (data.success && data.is_calibrated) {
             div.innerHTML = `<div class="p-2" style="background:rgba(76,175,80,0.1);border-radius:8px;border:1px solid rgba(76,175,80,0.3);">✅ <strong>Calibrated:</strong> ${data.pixels_per_mm.toFixed(4)} px/mm</div>`;
@@ -346,8 +344,8 @@ async function calibrateCheckerboard() {
     for (const f of files) formData.append('images', f);
     showSpinner('Calibrating...');
     try {
-        const res = await fetch(API_BASE + '/api/camera/calibrate', { method: 'POST', body: formData });
-        showCalibrationResult(await res.json());
+        const data = await apiFetch('/api/camera/calibrate', { method: 'POST', body: formData });
+        showCalibrationResult(data);
     } catch (e) { showToast('Calibration failed: ' + e.message, 'error'); }
     hideSpinner();
 }
@@ -361,8 +359,8 @@ async function calibrateKnownObject() {
     formData.append('image', file);
     showSpinner('Calibrating...');
     try {
-        const res = await fetch(API_BASE + '/api/camera/calibrate', { method: 'POST', body: formData });
-        showCalibrationResult(await res.json());
+        const data = await apiFetch('/api/camera/calibrate', { method: 'POST', body: formData });
+        showCalibrationResult(data);
     } catch (e) { showToast('Calibration failed: ' + e.message, 'error'); }
     hideSpinner();
 }
@@ -372,11 +370,11 @@ async function calibrateManual() {
     if (ppm <= 0) { showToast('Enter a valid pixels-per-mm value', 'warning'); return; }
     showSpinner('Setting calibration...');
     try {
-        const res = await fetch(API_BASE + '/api/camera/calibrate/manual', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+        const data = await apiFetch('/api/camera/calibrate/manual', {
+            method: 'POST',
             body: JSON.stringify({ pixels_per_mm: ppm })
         });
-        showCalibrationResult(await res.json());
+        showCalibrationResult(data);
     } catch (e) { showToast('Calibration failed: ' + e.message, 'error'); }
     hideSpinner();
 }
