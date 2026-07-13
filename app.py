@@ -105,9 +105,17 @@ camera_mgr = CameraManager()
 preprocessor = Preprocessor()
 segmenter = Segmenter()
 clustering_segmenter = ClusteringSegmenter()
-cellpose_segmenter = create_cellpose_segmenter() if config.USE_CELLPOSE else None
+_cellpose_segmenter = None  # lazy-loaded on first Cellpose use
 reporter = ReportGenerator()
 grader = GradingEngine()
+
+
+def get_cellpose_segmenter():
+    """Lazy-load Cellpose segmenter on first use to avoid startup cost."""
+    global _cellpose_segmenter
+    if _cellpose_segmenter is None:
+        _cellpose_segmenter = create_cellpose_segmenter()
+    return _cellpose_segmenter
 
 # Store the last analysis result for the reports page
 last_analysis: Dict[str, Any] = {}
@@ -471,16 +479,26 @@ def _run_pipeline(
     t0 = datetime.now()
 
     # Phase 3 & 4 – Preprocessing & Segmentation
-    if use_cellpose and cellpose_segmenter is not None:
+    if use_cellpose:
         # Use Cellpose 3 (cyto3) Segmentation
-        seg_result = cellpose_segmenter.segment(image)
-        binary = np.zeros_like(image[:, :, 0])  # Dummy binary for the rest of the pipeline
-        pre_result = {"steps": seg_result.get("steps", {})}
-        segmentation_method = "cellpose_cyto3"
+        cellpose = get_cellpose_segmenter()
+        if cellpose is not None:
+            seg_result = cellpose.segment(image)
+            binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
+            pre_result = {"steps": seg_result.get("steps", {})}
+            segmentation_method = "cellpose_cyto3"
+        else:
+            # Cellpose requested but unavailable — fall back to clustering
+            use_cellpose = False
+            use_clustering = True
+            seg_result = clustering_segmenter.segment(image)
+            binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
+            pre_result = {"steps": seg_result.get("steps", {})}
+            segmentation_method = "kmeans_watershed"
     elif use_clustering:
         # Use Advanced K-Means + GrabCut Clustering
         seg_result = clustering_segmenter.segment(image)
-        binary = np.zeros_like(image[:, :, 0])  # Dummy binary for the rest of the pipeline
+        binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
         pre_result = {"steps": seg_result.get("steps", {})}
         segmentation_method = "kmeans_watershed"
     else:
@@ -1038,6 +1056,10 @@ def update_settings():
     if "use_clustering" in data:
         config.USE_CLUSTERING = bool(data["use_clustering"])
         updates.append("use_clustering")
+
+    # Reset cached Cellpose segmenter so next request picks up new settings
+    global _cellpose_segmenter
+    _cellpose_segmenter = None
 
     return jsonify({"success": True, "updated": updates})
 
