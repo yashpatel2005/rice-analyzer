@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analysis — Rice Analyzer</title>
     <meta name="description" content="Rice Grain Morphometric Analysis System — AI-powered grain measurement, classification and grading.">
+    <meta name="api-base-url" content="https://api.yash-patel.in">
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
@@ -129,14 +130,22 @@
             <summary style="cursor: pointer; font-weight: 600; color: #6b8cbe; user-select: none;">
                 ⚙️ Advanced Settings
             </summary>
-            <div class="grid grid-3 mt-2" style="margin-top: 1rem;">
+            <div class="grid grid-3" style="margin-top: 1rem;">
                 <div class="form-group">
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="use-clustering" checked disabled>
-                        <input type="hidden" id="use-clustering-hidden" value="true">
+                        <input class="form-check-input" type="checkbox" id="use-cellpose">
+                        <label class="form-check-label" for="use-cellpose">
+                            Cellpose 3 Segmentation (cyto3)
+                            <small class="d-block text-muted">Deep-learning segmenter. Slow on CPU — may time out. Use only if clustering fails.</small>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="use-clustering" checked>
                         <label class="form-check-label" for="use-clustering">
-                            Use Advanced Clustering (K-Means + Watershed)
-                            <small class="d-block text-muted">Always enabled — optimized unsupervised segmentation.</small>
+                            Advanced Clustering (K-Means + Watershed)
+                            <small class="d-block text-muted">Unsupervised clustering fallback.</small>
                         </label>
                     </div>
                 </div>
@@ -370,7 +379,8 @@ async function runAnalysis() {
     const useWatershed = document.getElementById('use-watershed').value;
     const ppm = document.getElementById('ppm-input').value;
     const contrastBoost = document.getElementById('contrast-boost').value;
-    const useClustering = true; // Always enabled
+    const useCellpose = document.getElementById('use-cellpose').checked;
+    const useClustering = document.getElementById('use-clustering').checked;
     const brokenThreshold = document.getElementById('broken-threshold').value;
     const blockSize = document.getElementById('block-size').value;
 
@@ -385,6 +395,7 @@ async function runAnalysis() {
     }
 
     formData.append('use_watershed', useWatershed);
+    formData.append('use_cellpose', useCellpose);
     formData.append('use_clustering', useClustering);
     formData.append('pixels_per_mm', ppm);
     formData.append('contrast_boost', contrastBoost);
@@ -527,7 +538,7 @@ function renderClassification(classifications, categoryCounts) {
         undersized_grain: 'badge-secondary', abnormal_grain: 'badge-danger',
     };
     let cardsHtml = '';
-    for (const [cat, count] of Object.entries(counts)) {
+    for (const [cat, count] of Object.entries(categoryCounts)) {
         cardsHtml += `
             <div class="stat-card">
                 <div class="stat-value">${count}</div>
