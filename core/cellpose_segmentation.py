@@ -228,14 +228,16 @@ class CellposeSegmenter:
             tile_rgb = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
         else:
             tile_rgb = tile
+            
+        diameter = config.CELLPOSE_DIAMETER_ESTIMATE if config.CELLPOSE_DIAMETER_ESTIMATE > 0 else None
         
         # Run Cellpose
         masks, flows, styles = self._model.eval(
             tile_rgb,
-            diameter=None,  # Auto-detect
+            diameter=diameter,
             channels=[0, 0],  # Grayscale
-            flow_threshold=0.4,
-            cellprob_threshold=0.0,
+            flow_threshold=config.CELLPOSE_FLOW_THRESHOLD,
+            cellprob_threshold=config.CELLPOSE_CELLPROB_THRESHOLD,
             do_3D=False,
             min_size=15,
             max_size_fraction=0.4,
