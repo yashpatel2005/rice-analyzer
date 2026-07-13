@@ -67,7 +67,7 @@ USE_CLUSTERING = True             # Use K-Means + Watershed instead of threshold
 # ------------------------------------------------------------------
 # Cellpose 3 (cyto3) Segmentation
 # ------------------------------------------------------------------
-USE_CELLPOSE = True               # Use Cellpose 3 for segmentation
+USE_CELLPOSE = False              # Use Cellpose 3 for segmentation - disabled by default because CPU inference is too slow for web requests
 CELLPOSE_MODEL = "cyto3"          # Model type: "cyto3", "cyto2", "nuclei"
 CELLPOSE_TILE_SIZE = 512          # Tile size for tiled inference
 CELLPOSE_OVERLAP = 64             # Overlap between tiles
