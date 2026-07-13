@@ -653,8 +653,8 @@ def _run_pipeline(
         "segmentation_method": segmentation_method,
         # Phase 4
         "num_grains": len(grains),
-        "raw_components": seg_result["raw_components"],
-        "filtered_components": seg_result["filtered_components"],
+        "raw_components": seg_result.get("raw_components", len(grains)),
+        "filtered_components": seg_result.get("filtered_components", len(grains)),
         # Phase 5
         "measurements": measurements,
         # Phase 6
