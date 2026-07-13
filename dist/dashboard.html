@@ -363,7 +363,14 @@ const axisDefaults = (xLabel = '', yLabel = '') => ({
 async function loadDashboardData() {
     showSpinner('Loading dashboard data...');
     try {
-        const data = await apiFetch('/api/dashboard/data');
+        // Check for run_id in URL query params
+        const params = new URLSearchParams(window.location.search);
+        const runId = params.get('run_id');
+        const endpoint = runId
+            ? `/api/dashboard/data?run_id=${encodeURIComponent(runId)}`
+            : '/api/dashboard/data';
+
+        const data = await apiFetch(endpoint);
 
         if (!data.success) {
             hideSpinner();
@@ -384,6 +391,11 @@ async function loadDashboardData() {
             document.getElementById('annotatedPlaceholder').style.display = 'none';
             document.getElementById('fsBtn').style.display = 'inline-flex';
         }
+
+        // Update subtitle with run info
+        const runId = data.run_id || 'latest';
+        document.getElementById('runSubtitle').textContent =
+            `Run: ${runId} • ${data.grain_data.length} grains analyzed`;
 
         renderKPICards(data.kpis);
         setupSlicers(data);
