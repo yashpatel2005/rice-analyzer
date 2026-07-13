@@ -120,6 +120,22 @@ def get_cellpose_segmenter():
         _cellpose_segmenter = create_cellpose_segmenter()
     return _cellpose_segmenter
 
+
+def release_cellpose_segmenter():
+    """Free GPU memory by unloading the Cellpose model after use."""
+    global _cellpose_segmenter
+    if _cellpose_segmenter is not None:
+        try:
+            del _cellpose_segmenter
+            _cellpose_segmenter = None
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.info("Cellpose model unloaded, GPU cache cleared")
+        except Exception as e:
+            logger.warning(f"Failed to release Cellpose segmenter: {e}")
+            _cellpose_segmenter = None
+
 # Store the last analysis result for the reports page
 last_analysis: Dict[str, Any] = {}
 
@@ -694,6 +710,10 @@ def _run_pipeline(
         "plot_previews": plot_previews,
         "quality_table_preview": quality_table_b64,
     }
+
+    # Free GPU memory after Cellpose use
+    if use_cellpose:
+        release_cellpose_segmenter()
 
 
 # ==================================================================
