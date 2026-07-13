@@ -793,7 +793,7 @@ def list_all_runs():
             runs.append({
                 "run_id": run_id,
                 "timestamp": data.get("timestamp", ""),
-                "num_grains": data.get("num_grains", 0),
+                "num_grains": data.get("num_grains", len(data.get("measurements", []))),
                 "grade": data.get("grading", {}).get("grade", "—"),
                 "grade_key": data.get("grading", {}).get("grade_key", ""),
                 "calibrated": data.get("metadata", {}).get("calibrated", False),
@@ -890,6 +890,14 @@ def dashboard_data():
                 data = json.load(f)
         except Exception as e:
             return jsonify({"success": False, "error": str(e)}), 500
+
+        # Load annotated image from disk
+        annotated_path = os.path.join(config.IMAGE_DIR, f"{run_id}_annotated.jpg")
+        if os.path.exists(annotated_path) and not data.get("annotated_preview"):
+            img = cv2.imread(annotated_path)
+            if img is not None:
+                _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                data["annotated_preview"] = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
     else:
         # Use last in-memory analysis, or fall back to most recent on disk
         if last_analysis and last_analysis.get("success"):
@@ -904,6 +912,14 @@ def dashboard_data():
             try:
                 with open(os.path.join(config.JSON_DIR, json_files[0]), "r") as f:
                     data = json.load(f)
+                # Load annotated image from disk
+                disk_run_id = json_files[0].replace("_report.json", "")
+                annotated_path = os.path.join(config.IMAGE_DIR, f"{disk_run_id}_annotated.jpg")
+                if os.path.exists(annotated_path) and not data.get("annotated_preview"):
+                    img = cv2.imread(annotated_path)
+                    if img is not None:
+                        _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                        data["annotated_preview"] = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
             except Exception as e:
                 return jsonify({"success": False, "error": str(e)}), 500
         else:
