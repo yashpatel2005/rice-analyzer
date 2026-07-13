@@ -507,6 +507,16 @@ def _run_pipeline(
                 binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
                 pre_result = {"steps": seg_result.get("steps", {})}
                 segmentation_method = "cellpose_cyto3"
+                # If Cellpose detected 0 grains (model can't detect this image type),
+                # fall back to clustering so the pipeline still works
+                if len(seg_result.get("grains", [])) == 0:
+                    logger.warning("Cellpose detected 0 grains, falling back to clustering")
+                    use_cellpose = False
+                    use_clustering = True
+                    seg_result = clustering_segmenter.segment(image)
+                    binary = seg_result.get("binary", np.zeros_like(image[:, :, 0]))
+                    pre_result = {"steps": seg_result.get("steps", {})}
+                    segmentation_method = "kmeans_watershed"
             except Exception as e:
                 logger.warning(f"Cellpose failed ({e}), falling back to clustering")
                 use_cellpose = False
