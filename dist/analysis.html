@@ -405,7 +405,7 @@ async function runAnalysis() {
     showSpinner('Running 10-phase analysis pipeline...');
 
     try {
-        const data = await apiFetch('/api/analyze', { method: 'POST', body: formData });
+        const data = await apiFetch('/api/analyze', { method: 'POST', body: formData, timeout: 300000 });
 
         if (data.success) {
             analysisResult = data;
