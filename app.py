@@ -45,7 +45,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image, ExifTags
 from flask import (
-    Flask, render_template, request, jsonify, send_file,
+    Flask, request, jsonify, send_file,
     send_from_directory, abort, url_for
 )
 from flask_cors import CORS
@@ -100,13 +100,6 @@ CORS(app, resources={
 
 app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
 
-# Context processor: inject API base URL into all templates
-@app.context_processor
-def inject_api_base_url():
-    return {
-        "api_base_url": os.getenv("FLASK_API_URL", ""),
-    }
-
 # Global singletons
 camera_mgr = CameraManager()
 preprocessor = Preprocessor()
@@ -136,31 +129,18 @@ def health_check():
 
 
 # ==================================================================
-#  FRONTEND PAGE ROUTES
+#  ROOT / API INFO (no UI served from this domain)
 # ==================================================================
 @app.route("/")
-def dashboard():
-    return render_template("index.html", active_page="home")
-
-@app.route("/camera")
-def camera_page():
-    return render_template("camera.html", active_page="camera")
-
-@app.route("/analysis")
-def analysis_page():
-    return render_template("analysis.html", active_page="analysis")
-
-@app.route("/reports")
-def reports_page():
-    return render_template("reports.html", active_page="reports")
-
-@app.route("/dashboard")
-def powerbi_dashboard():
-    return render_template("dashboard.html", active_page="dashboard")
-
-@app.route("/settings")
-def settings_page():
-    return render_template("settings.html", active_page="settings")
+def api_root():
+    """Return API info. UI is served separately (e.g. Vercel)."""
+    return jsonify({
+        "service": "Rice Analyzer API",
+        "version": "1.0",
+        "status": "online",
+        "docs": "Use /health for status and /api/* endpoints for operations.",
+        "ui": "https://rice-analyzer-sandy.vercel.app"
+    })
 
 
 # ==================================================================
