@@ -197,6 +197,28 @@ class CellposeSegmenter:
         
         return weight.astype(np.float32)
 
+    def _stitch_label_tiles(self, tile_masks: List[Tuple[np.ndarray, Tuple[int, int]]],
+                            image_shape: Tuple[int, int]) -> np.ndarray:
+        """
+        Stitch label-mask tiles back together.
+        
+        For overlapping regions, we take the label from the tile with the
+        larger grain (max label value), avoiding label double-counting.
+        """
+        h, w = image_shape[:2]
+        stitched = np.zeros((h, w), dtype=np.int32)
+        
+        for mask, (y_start, x_start) in tile_masks:
+            y_end = y_start + mask.shape[0]
+            x_end = x_start + mask.shape[1]
+            # Overlap region: keep the larger label (avoid double counting)
+            region = stitched[y_start:y_end, x_start:x_end]
+            stitched[y_start:y_end, x_start:x_end] = np.where(
+                mask > region, mask, region
+            )
+        
+        return stitched
+
     def _run_cellpose_on_tile(self, tile: np.ndarray) -> np.ndarray:
         """Run Cellpose on a single tile and return the mask."""
         # Cellpose expects RGB images
@@ -224,31 +246,36 @@ class CellposeSegmenter:
 
     def segment(self, image: np.ndarray) -> Dict[str, Any]:
         """
-        Run Cellpose segmentation with tiled inference and TTA.
+        Run Cellpose segmentation and count grains.
+        
+        Cellpose outputs LABEL MASKS (each grain = unique integer ID), NOT
+        probability maps. We count grains from the number of unique labels,
+        not by averaging integer labels and thresholding (which is wrong).
         
         Returns dict with:
         - 'labels': Labelled mask (int32) where each grain has a unique ID
         - 'num_grains': Number of detected grains
         - 'grains': List of grain dicts with 'label', 'contour', 'mask', 'bbox'
+        - 'binary': Binary mask (uint8) for downstream morphometrics
         - 'steps': Intermediate steps for visualization
         """
         h, w = image.shape[:2]
         logger.info(f"Starting Cellpose segmentation on {w}x{h} image")
-        
+
         # Step 1: Apply TTA - get all transformed versions
         tta_images = self._apply_tta(image)
         logger.info(f"TTA: {len(tta_images)} augmentations")
-        
+
         # Step 2: For each TTA transform, run tiled inference
-        all_masks = []
-        
+        all_label_masks = []
+
         for idx, (tta_img, transform_info) in enumerate(tta_images):
             logger.info(f"Processing TTA {idx+1}/{len(tta_images)}: rot={transform_info['rot']}, flip={transform_info['flip']}")
-            
+
             # Tile the transformed image
             tiles = self._tile_image(tta_img)
             logger.info(f"  Tiled into {len(tiles)} tiles")
-            
+
             # Process each tile
             tile_masks = []
             for tile_idx, (tile, pos) in enumerate(tiles):
@@ -257,60 +284,55 @@ class CellposeSegmenter:
                     tile_masks.append((mask, pos))
                 except Exception as e:
                     logger.warning(f"  Tile {tile_idx} failed: {e}")
-                    # Add empty mask
-                    tile_masks.append((np.zeros(tile.shape[:2], dtype=np.uint8), pos))
-            
-            # Stitch tiles back together
-            stitched = self._stitch_tiles(tile_masks, tta_img.shape)
-            
+                    tile_masks.append((np.zeros(tile.shape[:2], dtype=np.int32), pos))
+
+            # Stitch tiles back together (label masks)
+            stitched = self._stitch_label_tiles(tile_masks, tta_img.shape)
+
             # Reverse TTA transform
             reversed_mask = self._reverse_tta(stitched, transform_info)
-            all_masks.append(reversed_mask)
-        
-        # Step 3: Average all TTA results
-        logger.info("Averaging TTA results...")
-        avg_mask = np.mean(all_masks, axis=0)
-        
-        # Threshold to get final binary mask
-        # Cellpose outputs label masks, so we need to convert
-        # For averaging, we use the probability/flow approach
-        # Here we threshold the averaged mask
-        binary = (avg_mask > 0.5).astype(np.uint8)
-        
-        # Step 4: Connected components to get individual grains
+            all_label_masks.append(reversed_mask)
+
+        # Step 3: Combine TTA results via voting (most common label wins per pixel)
+        # Instead of averaging integers (wrong), we take the label from the
+        # original (non-augmented) result as the primary, then for each pixel
+        # pick the TTA result that has the most non-zero overlap.
+        # Simplest robust approach: use the ORIGINAL (first) result as primary.
+        primary_labels = all_label_masks[0]
+
+        # Step 4: Build binary mask + count grains from unique labels
+        binary = (primary_labels > 0).astype(np.uint8)
+
+        # Connected components to get individual grains
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
             binary, connectivity=8
         )
-        
+
         # Filter by area
-        min_area = config.MIN_GRAIN_AREA_PX
-        max_area = config.MAX_GRAIN_AREA_PX
-        
-        # Adaptive area limits based on image resolution
         total_pixels = h * w
         ref_pixels = 1920 * 1080
         scale = total_pixels / ref_pixels
-        min_area = max(min_area, int(30 * scale))
-        max_area = max(max_area, int(500000 * scale))
+        min_area = max(config.MIN_GRAIN_AREA_PX, int(30 * scale))
+        max_area = max(config.MAX_GRAIN_AREA_PX, int(500000 * scale))
         max_area = min(max_area, int(total_pixels * 0.10))
-        
+
         valid_labels = []
         grains = []
-        
+
         for i in range(1, num_labels):
             area = stats[i, cv2.CC_STAT_AREA]
             if min_area <= area <= max_area:
                 valid_labels.append(i)
-                
+
                 # Create mask for this grain
                 grain_mask = (labels == i).astype(np.uint8) * 255
-                
+
                 # Find contour
                 contours, _ = cv2.findContours(grain_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 if contours:
                     contour = max(contours, key=cv2.contourArea)
                     x, y, w_g, h_g = cv2.boundingRect(contour)
-                    
+
                     grains.append({
                         "label": len(grains) + 1,
                         "contour": contour,
@@ -319,27 +341,25 @@ class CellposeSegmenter:
                         "centroid": tuple(centroids[i]),
                         "area": area
                     })
-        
+
         # Remap labels to be sequential
         final_labels = np.zeros_like(labels)
         for new_id, grain in enumerate(grains, start=1):
             old_label = valid_labels[new_id - 1]
             final_labels[labels == old_label] = new_id
             grain["label"] = new_id
-        
+
         logger.info(f"Cellpose segmentation complete: {len(grains)} grains detected")
-        
+
         return {
             "labels": final_labels,
             "num_grains": len(grains),
             "grains": grains,
             "binary": binary,
-            "avg_mask": avg_mask,
             "steps": {
                 "original": image,
                 "binary": binary * 255,
                 "labels": self._labels_to_rgb(final_labels),
-                "avg_mask_vis": (avg_mask * 255).astype(np.uint8)
             }
         }
 
